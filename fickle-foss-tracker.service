@@ -1,0 +1,15 @@
+[Unit]
+Description=Fickle Foss - Desktop Application Usage Tracker
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/fickle-foss/fickle_foss_tracker.py
+Restart=on-failure
+RestartSec=10
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=graphical-session.target
