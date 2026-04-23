@@ -24,12 +24,13 @@ fi
 green "Installing files to $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR"
 
-# Copy all Python files
-cp "$SCRIPT_DIR"/*.py "$INSTALL_DIR/"
+# Copy main scripts
+cp "$SCRIPT_DIR/fickle_foss_tracker.py" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/fickle_foss_query.py" "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR/fickle_foss_tracker.py"
 chmod +x "$INSTALL_DIR/fickle_foss_query.py"
 
-# Copy tracker_utils directory if it exists
+# Copy tracker_utils directory, excluding __pycache__
 if [ -d "$SCRIPT_DIR/tracker_utils" ]; then
     cp -r "$SCRIPT_DIR/tracker_utils" "$INSTALL_DIR/"
 fi
@@ -89,4 +90,4 @@ green "  Data:    $HOME/.local/share/fickle_foss/"
 echo ""
 echo "Check service status:  systemctl --user status $SERVICE_NAME"
 echo "Query your app usage:  fickle-foss-query"
-echo "                   or: fickle-foss-query --stats"
+echo "                   or: fickle-foss-query --help"

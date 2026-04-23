@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
-import utils
+import tracker_utils.utils as utils
+import tracker_utils.scan as scan
+import tracker_utils.db as db
 import time
 import os
 
@@ -12,13 +14,13 @@ DESKTOP_APP_DIRS = [
 DESKTOP_FILES = utils.load_desktop_files(DESKTOP_APP_DIRS)
 POLL_INTERVAL = 10  # seconds
 DB_PATH = os.path.expanduser("~/.local/share/fickle_foss/fickle_foss.db")
-conn = utils.init_db(DB_PATH)
+conn = db.init_db(DB_PATH)
 
 while True:
-	new_processes, running_pids = utils.get_new_processes()
-	new_desktop_apps = utils.filter_to_desktop_apps(new_processes, running_pids, DESKTOP_FILES)
+	new_processes, running_pids = scan.get_new_processes()
+	new_desktop_apps = scan.filter_to_desktop_apps(new_processes, running_pids, DESKTOP_FILES)
 	if new_desktop_apps:
 		for app in new_desktop_apps:
 			# print(app['app_name'])
-			utils.log_launch(conn, app)
+			db.log_app(conn, app)
 	time.sleep(POLL_INTERVAL)

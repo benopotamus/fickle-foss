@@ -16,10 +16,9 @@ Just run install.sh
 ### 1. Copy the Python scripts to home directory
 
 ```bash
-mkdir -p ~/.local/bin/fickle-foss
-mv fickle_foss_tracker.py ~/.local/bin/fickle-foss/fickle_foss_tracker.py
-mv fickle_foss_query.py ~/.local/bin/fickle-foss/fickle_foss_query.py
-mv utils.py ~/.local/bin/fickle-foss/utils.py
+mkdir -p ~/.local/bin/fickle-foss/
+mv fickle_foss_tracker.py fickle_foss_query.py ~/.local/bin/fickle-foss/
+mv tracker_utils ~/.local/bin/fickle-foss/
 chmod +x ~/.local/bin/fickle-foss/fickle_foss_tracker.py ~/.local/bin/fickle-foss/fickle_foss_query.py
 ```
 
@@ -55,10 +54,13 @@ The database is automatically created at:
 If you did a manual install, use the full script path - ``python3 ~/.local/bin/fickle-foss/fickle_foss_query.py`` - instead of the ``fickle-foss-query`` command (added automatically by ``install.sh``.
 
 ```bash
-# Today's launches
+# Show apps used in last 30 days (ordered by number of days used)
 fickle-foss-query
 
-# A specific date
+# Apps used today
+fickle-foss-query --today
+
+# On a specific date
 fickle-foss-query --date 2024-03-15
 
 # Last 7 days
@@ -68,10 +70,7 @@ fickle-foss-query --week
 fickle-foss-query --month
 
 # All recorded data
-fickle-foss-query --all
-
-# Per-app statistics (most used, first/last seen)
-fickle-foss-query --stats
+fickle-foss-query --alltime
 ```
 
 Or query the SQLite database directly:
@@ -91,7 +90,7 @@ systemctl --user disable fickle-foss-tracker
 
 # Remove files
 rm ~/.config/systemd/user/fickle-foss-tracker.service
-rm -rf ~/.local/bin/fickle_foss
+rm -rf ~/.local/bin/fickle-foss
 
 # Optionally remove the database
 rm ~/.local/share/fickle_foss
