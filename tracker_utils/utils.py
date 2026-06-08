@@ -4,31 +4,28 @@ import configparser
 import subprocess
 
 
-# Special overrides for libreoffice
-# Maps a .desktop file's `Exec=` binary name to the comm name seen in `/proc`
-_BINARY_ALIASES = {
-	"libreoffice":         "soffice",
-	"libreoffice-writer":  "soffice",
-	"libreoffice-calc":    "soffice",
-	"libreoffice-impress": "soffice",
-	"libreoffice-draw":    "soffice",
+# Sometimes the Exec name in the desktop file doesn't exactly match the value in the /proc/<pid>/comm file
+# This dictionary is used to rename the exec value so it will match
+exec_renames = {
+	'libreoffice': 'soffice.bin',
+	'thunderbird': 'thunderbird-bin'
 }
 
-def load_desktop_files(desktop_app_dirs):
-	"""
-	Parses .desktop files and returns a dict mapping known executable/comm
-	names to their friendly app names.
 
-	e.g. {
-		"firefox":          "Firefox Web Browser",
-		"soffice":          "LibreOffice",
-		"soffice --writer": "LibreOffice Writer",
-	}
-	"""
-	apps = {}
-	current_desktop = get_current_desktop()
+def get_app_map_from_desktop_files(desktop_apps_dirs):
+	'''Returns two dictionaries based on `.desktop` files:
 
-	for directory in desktop_app_dirs:
+	1) mapping of app names to Exec values (Exec value is dictionary key)
+		Uses a truncated Exec value to match the truncated value in /proc/<pid>/comm
+		e.g. { '/usr/lib64/libreoffice/program/soffice.bin': 'LibreOffice' }
+	
+	2) mapping of app names to X-Flatpak values (X-Flatpak is dictionary key)
+		e.g. { 'org.gnome.gitlab.somas.Apostrophe': 'Apostrophe' }
+	'''
+	proc_apps = {}
+	flatpak_apps = {}
+
+	for directory in desktop_apps_dirs:
 		for filepath in glob.glob(os.path.join(directory, "*.desktop")):
 			try:
 				cp = configparser.ConfigParser(interpolation=None, strict=False)
@@ -41,58 +38,37 @@ def load_desktop_files(desktop_app_dirs):
 
 				if entry.get("Type", "") != "Application":
 					continue
-				if entry.get("NoDisplay", "false").lower() == "true":
-					continue
 
-				if current_desktop:
-					only_show_in = entry.get("OnlyShowIn", "")
-					if only_show_in and current_desktop not in only_show_in.split(";"):
-						continue
+				app_name = entry.get("Name", "").strip()
+				app_flatpak = entry.get("X-Flatpak", "").strip() # e.g. org.gnome.gitlab.somas.Apostrophe
 
-					not_show_in = entry.get("NotShowIn", "")
-					if current_desktop in not_show_in.split(";"):
-						continue
+				if app_flatpak:
+					flatpak_apps[app_flatpak] = app_name
+				
+				else:
+					# We do a few things here to get just the file name
+					# 	1. Strip spaces
+					# 	2. Split on spaces (seperates file name from command line arguments)
+					# 	3. Split on "/" because some Exec entries are full paths, but the value in /proc/<pid>/comm is always just a file name (no path). 
+					# 	4. The [-1] grabs the file name at the end of the path
+					app_exec = entry.get("Exec", "").strip().split()[0].split('/')[-1]
 
-				name = entry.get("Name", "").strip()
-				exec_line = entry.get("Exec", "").strip()
+					# Special processing for popular apps where the desktop exec value is not the same as the /proc/<pid>/comm value that it needs to match on
+					if app_exec in exec_renames:
+						app_exec = exec_renames[app_exec]
 
-				if not name or not exec_line:
-					continue
+					# The Exec value is eventually compared to /proc/<pid>/comm value. The comm value has a max length of 15 characters so we truncate it here
+					# See https://www.kernel.org/doc/html/latest/filesystems/proc.html#proc-pid-comm-proc-pid-task-tid-comm
+					proc_apps[app_exec[:15]] = app_name
 
-				# Strip field codes (%u, %F, etc.)
-				tokens = [t for t in exec_line.split() if not t.startswith("%")]
-				if not tokens:
-					continue
-
-				binary = os.path.basename(tokens[0])
-
-				# For Flatpak apps, the real command is in --command=<name>
-				if binary == "flatpak":
-					command_arg = next((t for t in tokens if t.startswith("--command=")), None)
-					if command_arg:
-						binary = command_arg.split("=", 1)[1]
-					else:
-						continue
-
-				# Normalise known wrapper binaries to the real comm name
-				binary = _BINARY_ALIASES.get(binary, binary)
-
-				# Primary key: just the executable name
-				apps.setdefault(binary, name)
-
-				# Truncated key: handles kernel's 15-char comm limit in /proc/comm
-				if len(binary) > 15:
-					apps.setdefault(binary[:15], name)
-
-				# Suite key: executable + first flag, for apps like LibreOffice
-				flags = [t for t in tokens[1:] if t.startswith("--")]
-				if flags:
-					apps.setdefault(f"{binary} {flags[0]}", name)
+					# TODO maybe update this data structure to be:
+					# { 'app_name': ?, 'app_exec': ?, 'app_icon': ? }
 
 			except Exception:
+				# Skip all failures 🤷
 				continue
 
-	return apps
+	return proc_apps, flatpak_apps
 
 
 def get_flatpak_desktop_dirs():
@@ -114,16 +90,15 @@ def get_flatpak_desktop_dirs():
 				dirs.append(candidate)
 	except FileNotFoundError:
 		pass  # flatpak not installed
+	print(dirs)
 	return dirs
 
 
 def get_current_desktop():
 	"""
 	Returns the current desktop environment as reported by XDG_CURRENT_DESKTOP,
-	e.g. "GNOME", "KDE", "XFCE".
+	e.g. "Gnome", "KDE", "XFCE".
 	Returns None if not set.
 	"""
 	desktop = os.environ.get("XDG_CURRENT_DESKTOP", "")
-	# XDG_CURRENT_DESKTOP can be colon-separated e.g. "ubuntu:GNOME"
-	# Claude made this decision
-	return desktop.split(":")[0] if desktop else None
+	return desktop if desktop else None
