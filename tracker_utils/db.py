@@ -1,53 +1,62 @@
 import os
 import sqlite3
-from datetime import datetime
+import datetime
 
 
 def init_db(db_path):
-	"""
-	Creates the database and table if they don't already exist.
-	Returns a connection object.
-
-	Fields
-		date        -- YYYY-MM-DD
-		launched_at -- ISO-8601 timestamp
-		app_name    -- friendly name (from .desktop file)
-		executable  -- process comm name
-	"""
+	'''Set up database - create tables etc'''
 	os.makedirs(os.path.dirname(db_path), exist_ok=True)
 	conn = sqlite3.connect(db_path)
-	conn.execute("""
-		CREATE TABLE IF NOT EXISTS app_launches (
-			id          INTEGER PRIMARY KEY AUTOINCREMENT,
-			date        TEXT    NOT NULL,
-			app_name    TEXT    NOT NULL,
-			comm        TEXT    NOT NULL,
-			pid         TEXT    NOT NULL,
-			cmdline     TEXT    NOT NULL
+
+	# Enable foreign key enforcement (off by default in SQLite)
+	conn.execute('PRAGMA foreign_keys = ON')
+
+	conn.execute('''
+		CREATE TABLE IF NOT EXISTS Apps (
+			id				INTEGER PRIMARY KEY AUTOINCREMENT,
+			name			TEXT	NOT NULL,
+			desktop_file	TEXT	NOT NULL UNIQUE
 		)
-	""")
-	conn.execute("""
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_date_app
-		ON app_launches(date, app_name)
-	""")
+	''')
+
+	conn.execute('''
+		CREATE TABLE IF NOT EXISTS DatesRun (
+			id		INTEGER PRIMARY KEY AUTOINCREMENT,
+			date	TEXT	NOT NULL,
+			app_id	INTEGER NOT NULL,
+			FOREIGN KEY (app_id) REFERENCES Apps(id),
+			UNIQUE (date, app_id)
+		)
+	''')
+
+	conn.execute('''
+		CREATE TABLE IF NOT EXISTS Donations (
+			id		INTEGER PRIMARY KEY AUTOINCREMENT,
+			date	TEXT	NOT NULL,
+			amount	INTEGER	NOT NULL,
+			app_id	INTEGER NOT NULL,
+			FOREIGN KEY (app_id) REFERENCES Apps(id)
+		)
+	''')
+
 	conn.commit()
 	return conn
 
-
 def log_app(conn, app):
-	"""
-	Records that an app was run today - or ignores if already recorded.
-	The unique index on (date, app_name) means duplicate inserts are silently ignored.
-	"""
-	date = datetime.now().strftime("%Y-%m-%d")
-	conn.execute("""
-		INSERT OR IGNORE INTO app_launches (date, app_name, comm, pid, cmdline)
-		VALUES (?, ?, ?, ?, ?)
-	""", (
-		date,
-		app["app_name"],
-		app["comm"],
-		app["pid"],
-		" ".join(app["cmdline"]),
-	))
+	'''Records that an app was run today (ignores if already recorded).
+	Also creates an Apps record if one doesn't exist already.
+	'''
+	date = datetime.date.today().strftime("%Y-%m-%d")
+	conn.execute('PRAGMA foreign_keys = ON')
+
+	conn.execute('''
+		INSERT OR IGNORE INTO Apps (name, desktop_file)
+		VALUES (?, ?)
+	''', (app['app_name'], app['desktop_file_name']))
+
+	conn.execute('''
+		INSERT OR IGNORE INTO DatesRun (date, app_id)
+		SELECT ?, id FROM Apps WHERE name = ?
+	''', (date, app['app_name']))
+
 	conn.commit()
