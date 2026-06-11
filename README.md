@@ -1,6 +1,6 @@
 # Fickle FOSS Tracker
 
-Records which desktop applications (those listed in your desktop menus) are used each day.
+Track which Linux desktop apps you are using each day.
 
 This is the first part in creating a https://fickle.giving app where users can donate to FOSS apps that they regularly use.
 
