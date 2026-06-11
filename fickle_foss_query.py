@@ -9,7 +9,6 @@ Usage:
 	python3 fickle_foss_query.py --week           	# Last 7 days summary
 	python3 fickle_foss_query.py --month          	# Last 30 days summary
 	python3 fickle_foss_query.py --alltime        	# Summary of all days
-	python3 fickle_foss_query.py --stats          	# Most-used apps overall
 """
 
 import argparse
@@ -44,14 +43,14 @@ def print_table(rows, headers):
 
 def print_heading(s):
 	'''Prints text with fancy formatting'''
-	print('\n\033[1m# ' + s + '\033[0m')
+	print('\n\033[1m# ' + s + '\033[0m\n')
 
 ###
 # Queries
 ###
 
 def show_day(conn: sqlite3.Connection, date: str):
-	print_heading(f"\nApps used on {date}\n")
+	print_heading(f"Apps used on {date}")
 	rows = conn.execute("""
 		SELECT Apps.name
 		FROM   DatesRun
@@ -64,7 +63,7 @@ def show_day(conn: sqlite3.Connection, date: str):
 
 
 def show_range(conn: sqlite3.Connection, start: str, end: str, label: str):
-	print_heading(f"{label} ({start} → {end})\n")
+	print_heading(f"{label} ({start} → {end})")
 	rows = conn.execute("""
 		SELECT   Apps.name, COUNT(DISTINCT DatesRun.date) AS days_used
 		FROM     DatesRun
@@ -78,7 +77,7 @@ def show_range(conn: sqlite3.Connection, start: str, end: str, label: str):
 
 
 def show_all(conn: sqlite3.Connection):
-	print_heading(f"All apps used (all recorded usage)\n")
+	print_heading(f"All apps used (all recorded usage)")
 	rows = conn.execute("""
 		SELECT Apps.name, COUNT(DISTINCT DatesRun.date) AS days_used
 		FROM   DatesRun
@@ -91,7 +90,7 @@ def show_all(conn: sqlite3.Connection):
 
 
 def show_default(conn: sqlite3.Connection, start: str, end: str):
-	print_heading(f"Apps used last 30 days\n")
+	print_heading(f"Apps used last 30 days")
 	rows = conn.execute("""
 		SELECT   Apps.name, COUNT(DISTINCT DatesRun.date) AS days_used
 		FROM     DatesRun

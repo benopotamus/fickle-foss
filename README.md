@@ -1,9 +1,8 @@
 # Fickle FOSS Tracker
 
-Records which desktop applications (those listed in your desktop menus) are
-launched each day.
+Records which desktop applications (those listed in your desktop menus) are used each day.
 
-This is the first part in creating a fickle giving app where users can donate to FOSS apps they regularly use.
+This is the first part in creating a https://fickle.giving app where users can donate to FOSS apps that they regularly use.
 
 ---
 
@@ -51,7 +50,7 @@ The database is automatically created at:
 
 ## Querying the data
 
-If you did a manual install, use the full script path - ``python3 ~/.local/bin/fickle-foss/fickle_foss_query.py`` - instead of the ``fickle-foss-query`` command (added automatically by ``install.sh``.
+If you did a manual install, use the full script path - ``python3 ~/.local/bin/fickle-foss/fickle_foss_query.py`` - instead of the ``fickle-foss-query`` command (added automatically by ``install.sh``).
 
 ```bash
 # Show apps used in last 30 days (ordered by number of days used)
@@ -73,15 +72,9 @@ fickle-foss-query --month
 fickle-foss-query --alltime
 ```
 
-Or query the SQLite database directly:
-
-```bash
-sqlite3 ~/.local/share/fickle_foss/fickle_foss.db \
-  "SELECT date, app_name, COUNT(*) FROM app_launches GROUP BY date, app_name ORDER BY date DESC;"
-```
 ---
 
-## Stopping / uninstalling
+## Uninstalling
 
 ```bash
 # Stop and disable
