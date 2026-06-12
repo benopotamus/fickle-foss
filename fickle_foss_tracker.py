@@ -24,7 +24,7 @@ import tracker_utils.app_scan as app_scan
 import tracker_utils.db as db
 
 POLL_INTERVAL = 10  # seconds
-DB_PATH = Path.home() / ".local" / "share" / "fickle-foss" / "fickle_foss.db"
+DB_PATH = Path.home() / ".local" / "share" / "fickle-foss" / "fickle-foss.db"
 
 
 conn = db.init_db(DB_PATH)

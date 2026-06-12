@@ -16,7 +16,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
-DB_PATH = Path.home() / ".local" / "share" / "fickle-foss" / "fickle_foss.db"
+DB_PATH = Path.home() / ".local" / "share" / "fickle-foss" / "fickle-foss.db"
 
 
 def get_conn() -> sqlite3.Connection:
