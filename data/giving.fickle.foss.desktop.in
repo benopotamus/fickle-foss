@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Fickle FOSS
+Exec=fickle-foss
+Icon=giving.fickle.foss
+Terminal=false
+Type=Application
+Categories=Office;
+Keywords=GTK;
+StartupNotify=true
+DBusActivatable=true

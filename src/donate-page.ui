@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+	<template class="DonatePage" parent="GtkBox">
+		<property name="orientation">vertical</property>
+		<child>
+			<object class="GtkListBox" id="de_box">
+				<property name="selection-mode">none</property>
+				<property name="margin-top">18</property>
+				<property name="margin-bottom">36</property>
+				<style>
+					<class name="boxed-list"/>
+				</style>
+			</object>
+		</child>
+		<child>
+			<object class="GtkCenterBox">
+				<child type="start">
+					<object class="GtkBox">
+						<child>
+							<object class="GtkLabel">
+								<property name="label" translatable="yes">Apps</property>
+								<style>
+									<class name="title-4"/>
+								</style>
+							</object>
+						</child>
+						<child>
+							<object class="GtkLabel">
+								<property name="label" translatable="yes"> (days used)</property>
+								<style>
+									<!-- <class name="title-4"/> -->
+								</style>
+							</object>
+						</child>
+					</object>
+				</child>
+				<child type="end">
+					<object class="GtkBox">
+						<child>
+							<object class="GtkLabel" id="period_name"></object>
+						</child>
+						<child>
+							<object class="GtkBox">
+								<property name="margin-start">12</property>
+								<style>
+									<class name="linked"/>
+								</style>
+								<child>
+									<object class="GtkButton" id="prev_period_button">
+										<property name="icon-name">go-previous-symbolic</property>
+									</object>
+								</child>
+								<child>
+									<object class="GtkButton" id="next_period_button">
+										<property name="icon-name">go-next-symbolic</property>
+									</object>
+								</child>
+							</object>
+						</child>
+					</object>
+				</child>
+			</object>
+		</child>
+		<child>
+			<object class="GtkStack" id="apps_list_stack">
+				<property name="vexpand">true</property>
+				<child>
+					<object class="AdwStatusPage" id="apps_placeholder">
+						<property name="title" translatable="yes">No App Usage</property>
+						<property name="description" translatable="yes">No apps used during this period</property>
+					</object>
+				</child>
+				<child>
+					<object class="GtkListBox" id="apps_listbox">
+						<property name="selection-mode">none</property>
+						<property name="margin-top">12</property>
+						<style>
+							<class name="boxed-list"/>
+						</style>
+					</object>
+				</child>
+			</object>
+		</child>
+	</template>
+</interface>

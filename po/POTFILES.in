@@ -1,0 +1,8 @@
+# List of source files containing translatable strings.
+# Please keep this file sorted alphabetically.
+data/giving.fickle.foss.desktop.in
+data/giving.fickle.foss.metainfo.xml.in
+data/giving.fickle.foss.gschema.xml
+src/main.py
+src/window.py
+src/window.ui

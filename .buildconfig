@@ -1,0 +1,12 @@
+[default]
+name=Default
+runtime=host
+toolchain=default
+config-opts=
+run-opts=
+prefix=/home/ben/Projects/.gnome-builder/projects/fickle-foss/install/host
+app-id=giving.fickle.foss
+postbuild=
+prebuild=
+run-command=fickle-foss
+default=true

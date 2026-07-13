@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=giving.fickle.foss
+Exec=@bindir@/fickle-foss --gapplication-service

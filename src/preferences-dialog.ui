@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+	<template class="PreferencesDialog" parent="AdwPreferencesDialog">
+		<property name="title" translatable="yes">Preferences</property>
+		<property name="follows_content_size">true</property>
+		<child>
+			<object class="AdwPreferencesPage">
+
+				<!-- Budget -->
+				<child>
+					<object class="AdwPreferencesGroup">
+						<property name="title" translatable="yes">Budget</property>
+						<child>
+							<object class="AdwEntryRow" id="budget_amount">
+								<property name="title">Amount</property>
+								<property name="input-purpose">NUMBER</property>
+								<child type="prefix">
+									<object class="GtkLabel" id="currency_symbol">
+										<property name="label">$</property>
+										<style><class name="dim-label"/></style>
+									</object>
+								</child>
+							</object>
+						</child>
+					</object>
+				</child>
+
+				<!-- Frequency -->
+				<child>
+					<object class="AdwPreferencesGroup">
+						<property name="title" translatable="yes">Frequency</property>
+						<child>
+							<object class="AdwActionRow">
+								<property name="title" translatable="yes">Weekly</property>
+								<property name="activatable-widget">freq_weekly</property>
+								<child type="prefix">
+									<object class="GtkCheckButton" id="freq_weekly"/>
+								</child>
+							</object>
+						</child>
+						<child>
+							<object class="AdwActionRow">
+								<property name="title" translatable="yes">Monthly</property>
+								<property name="activatable-widget">freq_monthly</property>
+								<child type="prefix">
+									<object class="GtkCheckButton" id="freq_monthly">
+										<property name="group">freq_weekly</property>
+									</object>
+								</child>
+							</object>
+						</child>
+						<child>
+							<object class="AdwActionRow">
+								<property name="title" translatable="yes">Yearly</property>
+								<property name="activatable-widget">freq_yearly</property>
+								<child type="prefix">
+									<object class="GtkCheckButton" id="freq_yearly">
+										<property name="group">freq_weekly</property>
+									</object>
+								</child>
+							</object>
+						</child>
+						<!-- <child> -->
+						<!-- 	<object class="AdwActionRow"> -->
+						<!-- 		<property name="title" translatable="yes">Infinite</property> -->
+						<!-- 		<property name="activatable-widget">freq_infinite</property> -->
+						<!-- 		<child type="prefix"> -->
+						<!-- 			<object class="GtkCheckButton" id="freq_infinite"> -->
+						<!-- 				<property name="group">freq_weekly</property> -->
+						<!-- 			</object> -->
+						<!-- 		</child> -->
+						<!-- 	</object> -->
+						<!-- </child> -->
+					</object>
+				</child>
+			</object>
+		</child>
+	</template>
+</interface>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+	<template class="DonationGroup" parent="GtkBox">
+		<property name="orientation">vertical</property>
+		<property name="margin-bottom">30</property>
+		<child>
+			<object class="GtkLabel" id="heading">
+				<property name="halign">start</property>
+				<property name="margin-bottom">12</property>
+				<style>
+					<!-- <class name="title-4"/> -->
+					<class name="heading"/>
+				</style>
+			</object>
+		</child>
+		<child>
+			<object class="GtkListBox" id="listbox">
+				<property name="selection-mode">none</property>
+				<style>
+					<class name="boxed-list"/>
+				</style>
+			</object>
+		</child>
+	</template>
+</interface>

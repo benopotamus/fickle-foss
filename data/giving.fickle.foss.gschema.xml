@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="fickle-foss">
+	<schema id="giving.fickle.foss" path="/giving/fickle/foss/">
+		<key name="window-width" type="i"><default>600</default></key>
+		<key name="window-height" type="i"><default>800</default></key>
+		<key name="window-maximized" type="b"><default>false</default></key>
+		<key name="window-fullscreen" type="b"><default>false</default></key>
+
+		<key name="donation-frequency" type="s"><default>"monthly"</default></key>
+		<key name="budget-amount" type="i"><default>5</default></key>
+	</schema>
+</schemalist>

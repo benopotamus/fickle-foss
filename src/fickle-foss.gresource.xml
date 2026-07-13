@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+	<gresource prefix="/giving/fickle/foss">
+		<file preprocess="xml-stripblanks">window.ui</file>
+		<file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
+		<file preprocess="xml-stripblanks">preferences-dialog.ui</file>
+		<file preprocess="xml-stripblanks">donations-page.ui</file>
+		<file preprocess="xml-stripblanks">donate-page.ui</file>
+		<file preprocess="xml-stripblanks">donation-group.ui</file>
+		<file preprocess="xml-stripblanks">donation-dialog.ui</file>
+		<file>styles.css</file>
+		<file preprocess="xml-stripblanks" alias="icons/scalable/actions/coin-symbolic.svg">../data/icons/coin-symbolic.svg</file>
+		<!-- <file preprocess="xml-stripblanks" alias="icons/scalable/actions/item-missing-symbolic.svg">../data/icons/item-missing-symbolic.svg</file> -->
+	</gresource>
+</gresources>
