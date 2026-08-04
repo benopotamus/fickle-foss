@@ -21,7 +21,7 @@ import locale
 from gi.repository import Adw
 from gi.repository import Gtk, Gio
 
-from .helpers import convert_amount_to_cents
+from . import helpers
 
 
 @Gtk.Template(resource_path='/giving/fickle/foss/preferences-dialog.ui')
@@ -31,11 +31,9 @@ class PreferencesDialog(Adw.PreferencesDialog):
 	freq_weekly = Gtk.Template.Child()
 	freq_monthly = Gtk.Template.Child()
 	freq_yearly = Gtk.Template.Child()
-	# freq_infinite = Gtk.Template.Child()
 
 	budget_amount = Gtk.Template.Child()
 	currency_symbol = Gtk.Template.Child()
-	# reminder_switchrow = Gtk.Template.Child()
 
 
 	def __init__(self, **kwargs):
@@ -73,17 +71,9 @@ class PreferencesDialog(Adw.PreferencesDialog):
 
 	def connect_budget(self):
 		"""Connects/binds Budget field with GSettings value.
-		Uses signals instead of GSettings bind because because it's a text field being stored as an integer and needs conversion
+		Uses signals instead of GSettings bind because because it needs conversion from the GSettings Integer to the text fields String.
 		"""
-		money_int = self.settings.get_int("budget-amount")
-
-		# Only show decimal places if needed
-		# Use locale for decimal place so it uses the correct one for the locale
-		if money_int % 100:
-			self.budget_amount.set_text( locale.currency(money_int/100, symbol=False, grouping=True) )
-		else:
-			self.budget_amount.set_text(str(int(money_int/100)))
-
+		self.budget_amount.set_text(helpers.to_money(self.settings.get_int("budget-amount"), symbol=False))
 		self.currency_symbol.set_text(locale.localeconv()['currency_symbol'])
 		self.budget_amount.connect("notify::text", self.on_budget_changed)
 
@@ -96,12 +86,10 @@ class PreferencesDialog(Adw.PreferencesDialog):
 			budget_field.remove_css_class("error")
 			return
 
-		money_cents = convert_amount_to_cents(text)
+		money_cents = helpers.to_int(text) # returns None if not a valid number
 
 		if money_cents is None:
-			# An amount of None from convert_amount_to_cents is an error state
 			budget_field.add_css_class("error")
 		else:
 			self.settings.set_int("budget-amount", money_cents)
 			budget_field.remove_css_class("error")
-

@@ -10,15 +10,6 @@
 			<object class="AdwToolbarView">
 				<child type="top">
 					<object class="AdwHeaderBar">
-						<!-- <child> -->
-						<!-- 	<object class="GtkButton"> -->
-						<!-- 		<property name="label">$40</property> -->
-						<!-- 		<property name="tooltip-text" translatable="yes">Budget remaining</property> -->
-						<!-- 		<style> -->
-						<!-- 			<class name="flat"/> -->
-						<!-- 		</style> -->
-						<!-- 	</object> -->
-						<!-- </child> -->
 						<child type="end">
 							<object class="GtkMenuButton">
 								<property name="primary">True</property>
@@ -94,7 +85,7 @@
 													<object class="AdwClamp">
 														<property name="maximum-size">600</property>
 														<property name="tightening-threshold">400</property>
-														<property name="margin-top">18</property> <!-- margin-top should be 36 but it was too far down for some reason and as a result wasn't in the same position as the DonationsPage heading (first period group heading). Changed to 30 so they align across pages -->
+														<property name="margin-top">18</property> <!-- margin-top should be 36 but it was too far down for some reason and as a result wasn't in the same position as the DonationsPage heading (first period group heading). Changed to 30 so they align across pages. -->
 														<property name="margin-start">18</property>
 														<property name="margin-end">18</property>
 														<property name="margin-bottom">18</property>

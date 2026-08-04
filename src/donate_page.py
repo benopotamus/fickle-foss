@@ -20,10 +20,11 @@
 import locale
 from datetime import date, timedelta
 from calendar import monthrange
-from gi.repository import Adw, Gtk, Gio
+from decimal import Decimal
+from gi.repository import Adw, Gtk, Gio, GObject
 
-from .db import get_apps_used_list, get_amount_donated_to_de_this_year
-from .helpers import get_de_name_and_icon, get_amount_as_locale_str
+from .db import get_apps_used_list, get_or_create_app_id_for_de
+from . import helpers
 from .donation_dialog import DonationDialog
 
 @Gtk.Template(resource_path='/giving/fickle/foss/donate-page.ui')
@@ -40,11 +41,13 @@ class DonatePage(Gtk.Box):
 
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
+		self.store = Gio.Application.get_default().store
+
 		self.prev_period_button.connect("clicked", self.show_prev_period)
 		self.next_period_button.connect("clicked", self.show_next_period)
 
 		self.settings = Gio.Settings(schema_id="giving.fickle.foss")
-		self.period = self.settings.get_string("donation-frequency") # e.g. "monthly"
+		self.donation_freq = self.settings.get_string("donation-frequency") # e.g. "monthly"
 
 		# Listen for changes to the frequency setting
 		self.settings.connect("changed::donation-frequency", self.on_frequency_changed)
@@ -57,8 +60,11 @@ class DonatePage(Gtk.Box):
 
 		# The user's desktop environment has a permanent place on the donate page
 		# e.g. "GNOME", "KDE", "XFCE"
-		de_name, de_icon = get_de_name_and_icon()
+		de_name, de_icon = helpers.get_de_name_and_icon()
+		de_app_id = get_or_create_app_id_for_de(de_name)
+
 		de_row = Adw.ActionRow(title=de_name)
+		de_row.app_id = de_app_id
 		de_row.themed_icon = de_icon # Store themed icon so it can be passed to dialog box later
 		icon = Gtk.Image.new_from_gicon(de_row.themed_icon)
 		icon.add_css_class('icon-dropshadow')
@@ -67,69 +73,83 @@ class DonatePage(Gtk.Box):
 		icon.set_margin_bottom(12)
 		de_row.add_prefix(icon)
 
-		# Add a tag to the row if an amount has been donated to the DE this year
-		amount_donated_to_de_this_year = get_amount_donated_to_de_this_year(de_name)
-		if amount_donated_to_de_this_year:
-			box = Gtk.Box(spacing=4, valign=Gtk.Align.CENTER)
-			label_amount = Gtk.Label(label=get_amount_as_locale_str(amount_donated_to_de_this_year, symbol=True))
-			label_amount.add_css_class('caption')
-			label_amount.add_css_class('bold')
-			label_clarifier = Gtk.Label(label='(this year)')
-			label_clarifier.add_css_class('subtitle')
-			box.append(label_amount)
-			box.append(label_clarifier)
-			de_row.add_suffix(box)
+		de_box = Gtk.Box(spacing=4, valign=Gtk.Align.CENTER)
+		de_label_amount = Gtk.Label()
+		de_label_amount.add_css_class('caption')
+		de_label_amount.add_css_class('bold')
+		de_label_clarifier = Gtk.Label(label='(this year)')
+		de_label_clarifier.add_css_class('subtitle')
+		de_box.append(de_label_amount)
+		de_box.append(de_label_clarifier)
+		de_row.add_suffix(de_box)
+
+		de_state = self.store.get_or_create(de_app_id)
+		self.bind_amount_donated(de_state, de_label_amount, de_box)
 
 		de_row.set_activatable(True)
 		self.de_box.append(de_row)
 
 
-		# Open donation dialog box when an app row is clicked
+		# Open donation dialog box when an app row (or the DE row) is clicked
 		self.apps_listbox.connect("row-activated", self.on_row_clicked)
-		self.de_box.connect("row-activated", self.on_de_row_clicked)
+		self.de_box.connect("row-activated", self.on_row_clicked)
+
+	def bind_amount_donated(self, state, label, box):
+		"""Binds an AppYearDonationState's amount_donated_this_year to a label's text
+		(formatted as money) and to a box's visibility (hidden when there's nothing
+		donated yet).
+		"""
+		state.bind_property(
+			"amount-donated-this-year", label, "label",
+			GObject.BindingFlags.SYNC_CREATE,
+			transform_to=lambda _binding, amount: helpers.to_money(Decimal(amount)) if amount else ""
+		)
+		state.bind_property(
+			"amount-donated-this-year", box, "visible",
+			GObject.BindingFlags.SYNC_CREATE,
+			transform_to=lambda _binding, amount: bool(amount)
+		)
 
 	def on_frequency_changed(self, settings, key):
-		self.period = settings.get_string(key)
-
+		self.donation_freq = settings.get_string(key)
 		self.init_period()
 		self.set_period_name()
 		self.populate_apps_used_list()
 
 	def init_period(self):
 		# from_date is always today so the user always starts with today's period
-		self.from_date = date.today()
+		self.date_ = date.today()
 
-		if self.period == "weekly":
+		if self.donation_freq == "weekly":
 			# A "week" is Monday to Sunday
 			# We set `from_date` to the 1st day of the current week by subtracting whatever `weekday()` (Monday==0)
 			# And set `to_date` to 6 days later (which 1st+6=7)
-			self.from_date = self.from_date - timedelta(days=self.from_date.weekday())
+			self.from_date = self.date_ - timedelta(days=self.date_.weekday())
 			self.to_date = self.from_date + timedelta(days=6)
 
-		elif self.period == "monthly":
-			self.from_date = self.from_date.replace(day=1)
+		elif self.donation_freq == "monthly":
+			self.from_date = self.date_.replace(day=1)
 			# to_date is dependent on how many days in the month - uses calendar.monthrange
 			# https://docs.python.org/3/library/calendar.html#calendar.monthrange
 			self.to_date = self.from_date.replace(day=monthrange(self.from_date.year, self.from_date.month)[1])
 
-		elif self.period == "yearly":
-			self.from_date = self.from_date.replace(day=1, month=1)
+		elif self.donation_freq == "yearly":
+			self.from_date = self.date_.replace(day=1, month=1)
 			# to_date is 31 December of current year
 			self.to_date = self.from_date.replace(day=31, month=12)
 
 		# TODO maybe add infinite in the future. All donations are lumped in the same period.
-		# elif self.period == "infinite":
-		# 	self.from_date = date.min
-		# 	self.to_date = date.max
+		# elif self.donation_freq == "infinite":
+		# 	self.from_date = date_.min
+		# 	self.to_date = date_.max
 
 
 	def set_period_name(self):
-		if self.period == "weekly":
-			self.period_name.set_label(f"Week of {self.from_date.strftime(locale.nl_langinfo(locale.D_FMT))}")
-		elif self.period == "monthly":
-			self.period_name.set_label(self.from_date.strftime("%B %Y"))
-		elif self.period == "yearly":
-			self.period_name.set_label(str(self.from_date.year))
+		"""Sets the period_name label
+		`self.from_date` is added to self by `self.init_period` - which is always called first.
+		"""
+		self.period_name.set_label(helpers.get_period_name(self.from_date, self.donation_freq))
+
 
 	def populate_apps_used_list(self):
 		# Clear list before populating (not needed first time, but needed all other times)
@@ -161,17 +181,21 @@ class DonatePage(Gtk.Box):
 			row.add_prefix(row_icon)
 			row.set_subtitle(f"{str(app['days_used'])} days")
 
-			# Add a tag to the row if an amount has been donated to the app this year
-			if app['amount_donated_this_year']:
-				box = Gtk.Box(spacing=4, valign=Gtk.Align.CENTER)
-				label_amount = Gtk.Label(label=get_amount_as_locale_str(app['amount_donated_this_year'], symbol=True))
-				label_amount.add_css_class('caption')
-				label_amount.add_css_class('bold')
-				label_clarifier = Gtk.Label(label='(this year)')
-				label_clarifier.add_css_class('subtitle')
-				box.append(label_amount)
-				box.append(label_clarifier)
-				row.add_suffix(box)
+			# Tag showing the amount donated this year - bound to the store (seeded with
+			# the value this query just fetched) so it updates live on donation changes,
+			# without needing populate_apps_used_list to run again.
+			box = Gtk.Box(spacing=4, valign=Gtk.Align.CENTER)
+			label_amount = Gtk.Label()
+			label_amount.add_css_class('caption')
+			label_amount.add_css_class('bold')
+			label_clarifier = Gtk.Label(label='(this year)')
+			label_clarifier.add_css_class('subtitle')
+			box.append(label_amount)
+			box.append(label_clarifier)
+			row.add_suffix(box)
+
+			state = self.store.get_or_create(app['id'], amount_donated_this_year=app['amount_donated_this_year'])
+			self.bind_amount_donated(state, label_amount, box)
 
 			row.set_activatable(True)
 			self.apps_listbox.append(row)
@@ -184,18 +208,18 @@ class DonatePage(Gtk.Box):
 
 	# SIGNAL
 	def show_next_period(self, _):
-		'''Sets the instance's variables of from_date and to_date to the next period's values, and updates the apps list with records within that range.'''
-		if self.period == "weekly":
+		"""Sets the instance's variables of from_date and to_date to the next period's values, and updates the apps list with records within that range."""
+		if self.donation_freq == "weekly":
 			self.from_date = self.from_date + timedelta(weeks=1)
 			self.to_date = self.to_date + timedelta(weeks=1)
 
-		elif self.period == "monthly":
+		elif self.donation_freq == "monthly":
 			self.from_date = self.to_date + timedelta(days=1) # +1 day to get to the next month
 			# to_date is dependent on how many days in the month - uses calendar.monthrange to get the number of days in from_date's month
 			# https://docs.python.org/3/library/calendar.html#calendar.monthrange
 			self.to_date = self.from_date.replace(day=monthrange(self.from_date.year, self.from_date.month)[1])
 
-		elif self.period == "yearly":
+		elif self.donation_freq == "yearly":
 			self.from_date = self.to_date + timedelta(days=1) # +1 day to get to the next year
 			self.to_date = self.from_date.replace(day=31, month=12) # 31 December of from_date's year
 
@@ -204,16 +228,16 @@ class DonatePage(Gtk.Box):
 
 	# SIGNAL
 	def show_prev_period(self, _):
-		'''Sets the instance's variables of from_date and to_date to the previous period's values, and updates the apps list with records within that range.'''
-		if self.period == "weekly":
+		"""Sets the instance's variables of from_date and to_date to the previous period's values, and updates the apps list with records within that range."""
+		if self.donation_freq == "weekly":
 			self.from_date = self.from_date - timedelta(weeks=1)
 			self.to_date = self.to_date - timedelta(weeks=1)
 
-		elif self.period == "monthly":
+		elif self.donation_freq == "monthly":
 			self.to_date = self.from_date - timedelta(days=1) # -1 day to get to the last day of the previous month month
 			self.from_date = self.to_date.replace(day=1)
 
-		elif self.period == "yearly":
+		elif self.donation_freq == "yearly":
 			self.to_date = self.from_date - timedelta(days=1) # -1 day to get to the last day of the previous year
 			self.from_date = self.to_date.replace(day=1, month=1) # 31 December of to_date's year
 
@@ -228,12 +252,3 @@ class DonatePage(Gtk.Box):
 			themed_icon = row.themed_icon,
 		)
 		dialog.present(self)
-
-	def on_de_row_clicked(self, listbox:Gtk.ListBox, row:Gtk.ListBoxRow):
-		dialog = DonationDialog(
-			app_name = row.get_title(),
-			themed_icon = row.themed_icon,
-			de=True
-		)
-		dialog.present(self)
-		

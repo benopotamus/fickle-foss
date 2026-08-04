@@ -19,11 +19,13 @@
 
 import locale
 from datetime import date, datetime
+from decimal import Decimal
 
-from gi.repository import Gtk, Gio, GObject, Adw
+from gi.repository import Gtk, Gio, Adw
 
 from . import db
-from .helpers import convert_amount_to_cents
+from . import helpers
+
 
 @Gtk.Template(resource_path='/giving/fickle/foss/donation-dialog.ui')
 class DonationDialog(Adw.Dialog):
@@ -36,31 +38,33 @@ class DonationDialog(Adw.Dialog):
 	delete_button = Gtk.Template.Child()
 	cancel_button = Gtk.Template.Child()
 
-	def __init__(self, app_name, themed_icon, app_id=None, donation_id=None, donation_date=None, donation_amount=None, de=None, **kwargs):
+	def __init__(self, app_name, themed_icon, app_id, donation_id=None, donation_date=None, donation_amount=None, **kwargs):
 		"""Set up the dialog
 
-		This can be called in one of three ways:
-			1. As a new donation (donation_id == False)
-			2. As an update to an existing donation (donation_id != True)
-			3. As a donation to the desktop environment (de == True)
-
-		Each of these three ways have their own database function.
+		This can be called in one of two ways:
+			1. As a new donation (donation_id is None)
+			2. As an update to an existing donation (donation_id is set)
 		"""
 		super().__init__(**kwargs)
+
+		self.store = Gio.Application.get_default().store
 
 		self.app_icon.set_from_gicon(themed_icon)
 		self.app_name.set_label(app_name)
 
 		self.app_id = app_id
 		self.donation_id = donation_id
-		self.de = de
+		self.app_name_text = app_name
+		self.themed_icon = themed_icon
 
 		# Hide delete button if no donation_id (which indicates this is a new donation, not an edit to an existing one)
 		if not donation_id:
 			self.delete_button.set_visible(False)
 
+		self.original_amount = 0
 		if donation_amount:
-			self.amount_field.set_text(donation_amount)
+			self.amount_field.set_text(str(helpers.to_money(donation_amount, symbol=False)))
+			self.original_amount = donation_amount # We keep the original donation amount so the new amount can be compared to the original amount to work out what the budget-remaining value should be.
 
 		# Set default value of date field using locale formatting
 		# https://docs.python.org/3/library/locale.html#locale.nl_langinfo
@@ -81,7 +85,7 @@ class DonationDialog(Adw.Dialog):
 
 	# SIGNAL
 	def on_amount_changed(self, amount_field, _):
-		"""Validates amount field as user types - adding/removing error class as needed."""
+		"""Validates amount field on keypress - adding/removing error class as needed."""
 		amount_field.remove_css_class("error")
 
 		text = amount_field.get_text().strip()
@@ -90,24 +94,23 @@ class DonationDialog(Adw.Dialog):
 		if not text:
 			return
 
-		# convert_amount_to_cents also does validation
-		money_cents = convert_amount_to_cents(text)
+		money_cents = helpers.to_int(text) # returns None if not a valid number
 
 		if money_cents is None:
-			# An amount of None from convert_amount_to_cents is an error (it couldn't do the conversion)
 			amount_field.add_css_class("error")
 		else:
 			amount_field.remove_css_class("error")
 
 	# SIGNAL
 	def on_date_changed(self, date_field, _):
-		"""Validate date field as user types.
-		Ideally date field would be a datepicker and the user cannot enter dates manually."""
+		"""Validate date field on keypress.
+		TODO Ideally date field would be a datepicker and the user would not enter dates manually."""
 		self.validate_date(date_field)
 
 	# SIGNAL
 	def on_save_clicked(self, _):
-		"""Validates fields then saves the donation details to the database."""
+		"""Validates fields then saves the donation details to the database.
+		amount_field is not actually validated here because it is validated whenever the value of it changes, see on_amount_changed"""
 		donation_date = self.validate_date(self.date_field)
 
 		# If user clicks Save with no data in these mandatory fields, they should see an error instead
@@ -116,23 +119,34 @@ class DonationDialog(Adw.Dialog):
 		if not self.date_field.get_text():
 			self.date_field.add_css_class("error")
 
-		# Only save if both fields are valid (not empty)
 		if self.amount_field.get_text() and self.date_field.get_text():
-			if self.donation_id:
-				db.update_donation(donation_date, self.amount_field.get_text(), self.donation_id)
-			elif self.app_id:
-				db.create_donation(donation_date, self.amount_field.get_text(), self.app_id)
-			elif self.de:
-				db.create_de_donation(donation_date, self.app_name.get_text(), self.amount_field.get_text())
+			amount_cents = helpers.to_int(Decimal(self.amount_field.get_text()))
+			if amount_cents is None or donation_date is None:
+				return
 
-			self.get_root().emit('donation-updated')
+			if self.donation_id:
+				db.update_donation(donation_date, amount_cents, self.donation_id)
+				self.get_root().donations_page.handle_donation_updated(
+					self.donation_id, donation_date.isoformat(), amount_cents
+				)
+			else:
+				donation_id = db.create_donation(donation_date, amount_cents, self.app_id)
+				self.get_root().donations_page.handle_donation_created(
+					donation_id, self.app_id, self.app_name_text, self.themed_icon,
+					donation_date.isoformat(), amount_cents
+				)
+
+			self.store.record_donation_change(self.app_id)
+			self.store.update_budget_remaining(amount_cents - self.original_amount)
 			self.close()
 
 	# SIGNAL
 	def on_delete_clicked(self, _):
 		"""Deletes the donation from the database."""
 		db.delete_donation(self.donation_id)
-		self.get_root().emit('donation-deleted')
+		self.get_root().donations_page.handle_donation_deleted(self.donation_id)
+		self.store.record_donation_change(self.app_id)
+		self.store.update_budget_remaining(-self.original_amount)
 		self.close()
 
 	# SIGNAL
@@ -161,4 +175,3 @@ class DonationDialog(Adw.Dialog):
 		except ValueError:
 			date_field.add_css_class("error")
 			return None
-

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-import argparse, sqlite3, locale
-from datetime import date, timedelta
+import sqlite3
+from datetime import date
 from pathlib import Path
+
+from . import helpers
 
 DB_PATH = Path.home() / ".local" / "share" / "fickle-foss" / "fickle-foss.db"
 
@@ -14,7 +16,6 @@ def get_conn():
 		print("The database is created by fickle_foss_tracker.py")
 		raise SystemExit(1)
 	conn = sqlite3.connect(DB_PATH)
-	#conn.row_factory = sqlite3.Row # Return dictionary instead of list of sets
 	return conn
 
 
@@ -50,12 +51,13 @@ def get_apps_used_list(date_from, date_to):
 	conn.close()
 	return apps_used
 
-def get_donations_groups(period):
+def get_donations_groups(donation_freq):
 	"""Returns a list of donations as sqlite3 Row's.
 	Keys are:
 		(donation) id
 		(donation) date
 		(donation) amount
+		(donation) app_id
 		(app) name
 		(app) desktop_file
 	"""
@@ -66,6 +68,7 @@ def get_donations_groups(period):
 			Donations.id,
 			Donations.date,
 			Donations.amount,
+			Donations.app_id,
 			Apps.name,
 			Apps.desktop_file
 		FROM     Donations
@@ -75,19 +78,9 @@ def get_donations_groups(period):
 	conn.close()
 
 	# Group records by period
-	def period_key(row):
-		period_start_date = date.fromisoformat(row['date'])
-		if period == "weekly":
-			monday = period_start_date - timedelta(days=period_start_date.weekday())
-			return f"Week of {monday.strftime(locale.nl_langinfo(locale.D_FMT))}"
-		elif period == "monthly":
-			return period_start_date.strftime("%B %Y")
-		elif period == "yearly":
-			return period_start_date.strftime("%Y")
-
 	groups = {}
 	for row in rows:
-		key = period_key(row)
+		key = helpers.get_period_name(date.fromisoformat(row['date']), donation_freq)
 		groups.setdefault(key, []).append(row)
 	return groups
 
@@ -97,6 +90,7 @@ def create_donation(donation_date, amount, app_id):
 	conn.execute('''
 		INSERT INTO Donations (date, amount, app_id)
 		VALUES(?, ?, ?)
+		RETURNING id
 	''', (donation_date.strftime("%Y-%m-%d"), amount, app_id))
 	conn.commit()
 	conn.close()
@@ -121,41 +115,32 @@ def delete_donation(donation_id):
 	conn.commit()
 	conn.close()
 
-def create_de_donation(donation_date, app_name, amount):
-	"""Saves a donation to the current desktop environment (DE).
-
-	The desktop environent isn't an app and doesn't have a guarenteed app
-	record, so this function also checks if the DE is in the database as an app
-	and adds if it if not."""
+def get_or_create_app_id_for_de(de_name):
+	"""Returns the Apps.id for the current desktop environment.
+	The DE is stored as an ordinary row in Apps (with desktop_file='DE').
+	"""
 	conn = get_conn()
-
-	# Check if the DE exists in the database already
-	row = conn.execute('''SELECT id FROM Apps WHERE name=?''', (app_name,)).fetchone()
-	de_id = row[0] if row else None # Get value from result tuple
-
-	if de_id is None:
+	row = conn.execute('''SELECT id FROM Apps WHERE name=?''', (de_name,)).fetchone()
+	if row:
+		de_id = row[0]
+	else:
 		de_id = conn.execute('''
 			INSERT INTO Apps (name, desktop_file)
 			VALUES(?, ?)
 			RETURNING id
-		''', (app_name, 'DE')).fetchone()[0]
-
-	# Carry on adding the donation
-	conn.execute('''
-		INSERT INTO Donations (date, amount, app_id)
-		VALUES(?, ?, ?)
-	''', (donation_date.strftime("%Y-%m-%d"), amount, de_id))
-	conn.commit()
+		''', (de_name, 'DE')).fetchone()[0]
+		conn.commit()
 	conn.close()
+	return de_id
 
-def get_amount_donated_to_de_this_year(de_name):
+def get_amount_donated_to_app_this_year(app_id):
+	"""Returns the total amount donated to a given app (or the DE "app") so far this year. 
+	Returns 0 if there are no donations yet."""
 	conn = get_conn()
 	total = conn.execute("""
 		SELECT 	SUM(amount)
-		FROM		Donations
-		JOIN		Apps ON Apps.id = Donations.app_id
-		WHERE	strftime('%Y', date)=? AND Apps.name=?
-	""", (str(date.today().year), de_name)).fetchone()
+		FROM	Donations
+		WHERE	strftime('%Y', date)=? AND app_id=?
+	""", (str(date.today().year), app_id)).fetchone()
 	conn.close()
-	return total[0]
-	
+	return total[0] or 0

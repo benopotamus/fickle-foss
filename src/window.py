@@ -17,25 +17,21 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from decimal import Decimal
 from gi.repository import Adw, Gtk, Gio, GObject
 
-from .donate_page import DonatePage
-from .donations_page import DonationsPage
+from . import helpers
+from .donate_page import DonatePage # Used by @Gtk.Template
+from .donations_page import DonationsPage # Used by @Gtk.Template
 
 
 @Gtk.Template(resource_path='/giving/fickle/foss/window.ui')
 class FickleFossWindow(Adw.ApplicationWindow):
-
-	# Custom signals to refresh the donations list when a donation is updated (or deleted)
-	@GObject.Signal
-	def donation_updated(self): pass
-	@GObject.Signal
-	def donation_deleted(self): pass
-
 	__gtype_name__ = 'FickleFossWindow'
 	stack = Gtk.Template.Child()
 	donations_page = Gtk.Template.Child()
 	donate_page = Gtk.Template.Child()
+	budget_label = Gtk.Template.Child()
 
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
@@ -47,7 +43,17 @@ class FickleFossWindow(Adw.ApplicationWindow):
 		self.settings.bind("window-maximized", self, "maximized", Gio.SettingsBindFlags.DEFAULT)
 		self.settings.bind("window-fullscreen", self, "fullscreened", Gio.SettingsBindFlags.DEFAULT)
 
-		self.stack.connect("notify::visible-child", self.on_page_changed)
+		# self.stack.connect("notify::visible-child", self.on_page_changed)
+
+		store = Gio.Application.get_default().store # AppStateStore instance from state.py
+		# https://api.pygobject.gnome.org/GObject-2.0/class-Object.html#methods
+		store.bind_property(
+			"budget-remaining", # source property
+			self.budget_label, # target object
+			"label", # target property
+			GObject.BindingFlags.SYNC_CREATE,
+			transform_to=lambda _, amount: f"{helpers.to_money(amount)} remaining in budget"
+		)
 
 	def on_page_changed(self, stack, _):
 		visible_child_name = stack.get_visible_child_name()
@@ -55,4 +61,3 @@ class FickleFossWindow(Adw.ApplicationWindow):
 			self.donations_page.populate_donations()
 		elif visible_child_name == 'donate':
 			self.donate_page.populate_apps_used_list()
-		

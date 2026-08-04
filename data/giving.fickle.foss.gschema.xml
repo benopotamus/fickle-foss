@@ -7,6 +7,14 @@
 		<key name="window-fullscreen" type="b"><default>false</default></key>
 
 		<key name="donation-frequency" type="s"><default>"monthly"</default></key>
-		<key name="budget-amount" type="i"><default>5</default></key>
+
+		<!-- 
+			budget-amount is the amount the user is commiting to donate each period (e.g. monthly) 
+			budget-remaining is a regularly updated value that is the amount the user has left in their budget
+
+			We use two different figures because the user can change the budget-remaining independent of how much they have actually donated. They might do this because their income for the month was less than they expected, for example.
+			-->
+		<key name="budget-amount" type="i"><default>500</default></key>
+		<key name="budget-remaining" type="i"><default>500</default></key>
 	</schema>
 </schemalist>

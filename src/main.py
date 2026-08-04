@@ -1,4 +1,4 @@
-# main.py
+# main.py Hi!
 #
 # Copyright 2026 Ben Michie
 #
@@ -30,6 +30,7 @@ from gi.repository import Gtk, Gio, Adw, Gdk
 
 from .window import FickleFossWindow
 from .preferences_dialog import PreferencesDialog
+from .state import AppStateStore
 
 
 class FickleFossApplication(Adw.Application):
@@ -42,6 +43,12 @@ class FickleFossApplication(Adw.Application):
 		self.create_action('quit', lambda *_: self.quit(), ['<control>q'])
 		self.create_action('about', self.on_about_action)
 		self.create_action('preferences', self.on_preferences_action)
+
+		# Single source of truth for donation totals that need to update live in the UI.
+		# Created here (rather than on the window) because DonatePage/DonationsPage are
+		# built as template children of the window and need this during their own
+		# __init__ - reachable anywhere via Gio.Application.get_default().store
+		self.store = AppStateStore()
 
 		# Used for currency symbols and date formats
 		locale.setlocale(locale.LC_ALL, '')
@@ -72,8 +79,7 @@ class FickleFossApplication(Adw.Application):
 								application_icon='giving.fickle.foss',
 								developer_name='ben',
 								version='0.1.0',
-								# Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
-								translator_credits = _('translator-credits'),
+								translator_credits = _('benopotamus'),
 								developers=['ben'],
 								copyright='© 2026 Ben Michie')
 		about.present(self.props.active_window)

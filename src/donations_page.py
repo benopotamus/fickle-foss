@@ -17,12 +17,37 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import locale
-from gi.repository import Adw, Gtk, Gio
+from datetime import date
+from decimal import Decimal
+from gi.repository import Adw, Gtk, Gio, GObject
 
-from .db import get_donations_groups
-from .helpers import get_de_name_and_icon, get_amount_as_locale_str
+from . import db
+from . import helpers
 from .donation_dialog import DonationDialog
+
+
+class DonationItem(GObject.Object):
+	"""Represents one donation row on the Donations page.
+	Only `amount` needs to be a GObject property (to make it reactive).
+	"""
+	__gtype_name__ = 'DonationItem'
+
+	amount = GObject.Property(type=int, default=0)
+
+	def __init__(self, donation_id, app_id, app_name, themed_icon, donation_date, amount):
+		super().__init__(amount=Decimal(amount))
+		self.id = donation_id
+		self.app_id = app_id
+		self.app_name = app_name
+		self.themed_icon = themed_icon
+		self.date = donation_date  # ISO string e.g. "2026-07-15"
+
+
+def _compare_by_date_desc(item_a, item_b):
+	"""Sort newest-first within a group, matching db.get_donations_groups' ORDER BY."""
+	if item_a.date == item_b.date:
+		return 0
+	return -1 if item_a.date > item_b.date else 1
 
 
 @Gtk.Template(resource_path='/giving/fickle/foss/donation-group.ui')
@@ -36,20 +61,56 @@ class DonationGroup(Gtk.Box):
 		super().__init__()
 		self.heading.set_label(group_name)
 
-		# Open donation dialog box when a donation row is clicked
+		self.store = Gio.ListStore.new(DonationItem)
+		self.listbox.bind_model(self.store, self._create_row)
 		self.listbox.connect("row-activated", self.on_listbox_row_clicked)
 
-	def add_row(self, row):
-		self.listbox.append(row)
+	def add_item(self, item):
+		self.store.insert_sorted(item, _compare_by_date_desc)
+
+	def remove_item(self, item):
+		found, index = self.store.find(item)
+		if found:
+			self.store.remove(index)
+
+	def _create_row(self, item):
+		"""Builds the row widget for one DonationItem. Called automatically by
+		self.listbox.bind_model whenever an item is inserted into self.store."""
+		row = Adw.ActionRow(title=item.app_name)
+		# Stashed on the row so on_listbox_row_clicked can get back to the item that
+		# produced it (and DonationsPage can find the right item/group to update later).
+		row.donation_item = item
+
+		amount_label = Gtk.Label()
+		amount_label.add_css_class('donation-amount')
+		item.bind_property(
+			"amount", amount_label, "label",
+			GObject.BindingFlags.SYNC_CREATE,
+			transform_to=lambda _, amount: helpers.to_money(amount)
+		)
+		row.add_suffix(amount_label)
+
+		row_icon = Gtk.Image.new_from_gicon(item.themed_icon)
+		row_icon.set_pixel_size(64)
+		row_icon.add_css_class('icon-dropshadow')
+		row_icon.set_margin_end(6)
+		row_icon.set_margin_top(12)
+		row_icon.set_margin_bottom(12)
+		row.add_prefix(row_icon)
+
+		row.set_activatable(True)
+		return row
 
 	# SIGNAL
 	def on_listbox_row_clicked(self, listbox:Gtk.ListBox, row:Gtk.ListBoxRow):
+		item = row.donation_item
 		dialog = DonationDialog(
-			donation_id = row.id,
-			app_name = row.get_title(),
-			themed_icon = row.themed_icon,
-			donation_date = row.donation_date,
-			donation_amount = row.amount,
+			app_id = item.app_id,
+			donation_id = item.id,
+			app_name = item.app_name,
+			themed_icon = item.themed_icon,
+			donation_date = item.date,
+			donation_amount = item.amount,
 		)
 		dialog.present(self)
 
@@ -63,84 +124,147 @@ class DonationsPage(Gtk.Stack):
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self.settings = Gio.Settings(schema_id="giving.fickle.foss")
-		self.period = self.settings.get_string("donation-frequency") # e.g. "monthly"
+		self.donation_freq = self.settings.get_string("donation-frequency") # e.g. "monthly"
+
+		self.period_groups = {}   # period key (e.g. "July 2026") -> DonationGroup
+		self.items_by_id = {}     # donation id -> (DonationItem, DonationGroup) - lets
+		                          # handle_donation_updated/deleted find a donation's
+		                          # current row without searching every group.
 
 		self.populate_donations()
 
 		self.settings.connect("changed::donation-frequency", self.on_frequency_changed)
 
-		# This realize stuff is my shameful hack to get the donations list to refresh when a donation is updated
-		# It uses a signal defined in window.py
-		# donation_dialog.py emits it when a successful save occurs and that save it updating an existing donation
-		self.connect('realize', self.on_realize)
-
-	def on_realize(self, _):
-		self.get_root().connect('donation-updated', self._refresh_donations)
-		self.get_root().connect('donation-deleted', self._refresh_donations)
-	def _refresh_donations(self, _): self.populate_donations()
-
-
 	def populate_donations(self):
-		"""Populates the main donation list, creating AdwPreferenceGroups for each period and AdwActionRows for each donation."""
-		# Clear page before populating (not needed first time, but needed all other times, in case data is changed in database)
-		# TODO look at using ListStore instead
+		"""Deletes and then (re)populates the main donation list.
+
+		Used on startup.
+		Also used as a fallback for handle_donation_created/updated/deleted when the creating/updating/deleting results in a group needing to be added (first donation in the group) or deleted (the only donation in a group is removed). New groups or deleting groups requires headings and boxes and things need to be put in the correct order. Doing this full refresh is less complicated than trying to manage all that and it should happen rarely.
+		"""
+
+		# Clear page before populating
 		while child := self.donation_groups_box.get_first_child():
 			self.donation_groups_box.remove(child)
+		self.period_groups = {}
+		self.items_by_id = {}
 
-		donation_groups = get_donations_groups(self.period)
+		donation_groups = db.get_donations_groups(self.donation_freq)
 
 		# Show placeholder if no donations yet
-		# TODO Check that this works. It will need fixing if db isn't returning none when there are no donations at all
 		if not donation_groups:
 			self.set_visible_child(self.donations_placeholder)
 			return
 
-		for group_name, group in donation_groups.items():
+		for group_name, group_rows in donation_groups.items():
 			donation_group = DonationGroup(group_name)
 
-			for donation in group:
-				row = Adw.ActionRow(title=donation['name'])
-
-				# Store some donation values on row so they can be passed to the donation dialog when editing
-				row.id = donation['id']
-				row.donation_date = donation['date']
-				row.amount = get_amount_as_locale_str(donation['amount'], symbol=False)
-				amount_with_symbol = get_amount_as_locale_str(donation['amount'], symbol=True)
-				label = Gtk.Label(label=amount_with_symbol)
-				label.add_css_class('donation-amount')
-				row.add_suffix(label)
-
+			for donation in group_rows:
 				# Get icon
 				# Special case for DE
 				if donation['desktop_file'] == 'DE':
-					_, row.themed_icon = get_de_name_and_icon()
+					_, themed_icon = helpers.get_de_name_and_icon()
 				else:
-					# Otherwise use desktop file
 					app_info = Gio.DesktopAppInfo.new(donation['desktop_file'])
-					# Store themed_icon on row so it can be passed to DonationDialog
-					row.themed_icon = app_info.get_icon() # Returns a Gio.ThemedIcon
-					if row.themed_icon is None:
+					themed_icon = app_info.get_icon() # Returns a Gio.ThemedIcon
+					if themed_icon is None:
 						continue
 
-				row_icon = Gtk.Image.new_from_gicon(row.themed_icon)
+				item = DonationItem(
+					donation_id = donation['id'],
+					app_id = donation['app_id'],
+					app_name = donation['name'],
+					themed_icon = themed_icon,
+					donation_date = donation['date'],
+					amount = donation['amount'],
+				)
+				donation_group.add_item(item)
+				self.items_by_id[item.id] = (item, donation_group)
 
-				# row_icon.set_icon_size(Gtk.IconSize.LARGE)
-				row_icon.set_pixel_size(64)
-				row_icon.add_css_class('icon-dropshadow')
-				row_icon.set_margin_end(6)
-				row_icon.set_margin_top(12)
-				row_icon.set_margin_bottom(12)
-				row.add_prefix(row_icon)
-
-				row.set_activatable(True)
-				donation_group.add_row(row)
-
+			self.period_groups[group_name] = donation_group
 			self.donation_groups_box.append(donation_group)
 
 		# Need to make page visible in case placeholder was being displayed previously
 		self.set_visible_child(self.donation_groups_box)
 
+	def handle_donation_created(self, donation_id, app_id, app_name, themed_icon, new_date, amount):
+		"""Adds a new donation row.
+		Does an in-place add unless it would result in a new group as well, in which case falls back to populate_donations().
+		"""
+		# No groups at all means this is the first donation ever and the placeholder is
+		# showing - the rebuild swaps in donation_groups_box.
+		if not self.period_groups:
+			self.populate_donations()
+			return
+
+		group = self.period_groups.get(helpers.get_period_name(date.fromisoformat(new_date), self.donation_freq))
+
+		if group is None:
+			# Falls in a period that has no group yet, so it needs a new heading inserted
+			# at the right point in donation_groups_box - only a rebuild gets that order right.
+			self.populate_donations()
+			return
+
+		item = DonationItem(
+			donation_id = donation_id,
+			app_id = app_id,
+			app_name = app_name,
+			themed_icon = themed_icon,
+			donation_date = new_date,
+			amount = amount,
+		)
+		# add_item uses insert_sorted, so the row lands in the right place within the
+		# group and bind_model builds the widget - nothing to touch directly here.
+		group.add_item(item)
+		self.items_by_id[item.id] = (item, group)
+
+	def handle_donation_updated(self, donation_id, new_date, new_amount):
+		"""Updates a donation row.
+		Does an in-place update unless it would result in a new group being created or an existing group being deleted (because the donation changed date and it was the only one in the existing group). For these complex situations, falls back to populate_donations().
+		"""
+		item, group = self.items_by_id.get(donation_id)
+		new_key = helpers.get_period_name(date.fromisoformat(new_date), self.donation_freq)
+		old_key = helpers.get_period_name(date.fromisoformat(item.date), self.donation_freq)
+
+		if new_key == old_key:
+			# Same period group - no rows move, just update the values in place.
+			# item.amount is bound to the row's label, so this alone updates the UI.
+			item.date = new_date
+			item.amount = new_amount
+			return
+
+		target_group = self.period_groups.get(new_key)
+		source_would_become_empty = group.store.get_n_items() == 1
+
+		if target_group is None or source_would_become_empty:
+			self.populate_donations()
+			return
+
+		# Move: remove from the old group's store, update the item, insert into the
+		# new group's store in the right sorted position. Both listboxes update
+		# themselves via bind_model - no row widgets are touched directly here.
+		group.remove_item(item)
+		item.date = new_date
+		item.amount = new_amount
+		target_group.add_item(item)
+		self.items_by_id[donation_id] = (item, target_group)
+
+	def handle_donation_deleted(self, donation_id):
+		"""Deletes a new donation row.
+		Does an in-place update unless it would result in a group being deleted (because the donation changed date and it was the only one in the existing group). For these complex situations, falls back to populate_donations().
+		"""
+		entry = self.items_by_id.get(donation_id)
+		if entry is None:
+			self.populate_donations()
+			return
+		item, group = entry
+
+		if group.store.get_n_items() == 1:
+			self.populate_donations()
+			return
+
+		group.remove_item(item)
+		del self.items_by_id[donation_id]
 
 	def on_frequency_changed(self, settings, key):
-		self.period = settings.get_string(key)
+		self.donation_freq = settings.get_string(key)
 		self.populate_donations()
