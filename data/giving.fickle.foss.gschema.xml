@@ -24,11 +24,11 @@
 			-->
 		<key name="budget-amount" type="i">
 			<default>500</default>
-			<summary>The amount the user has committed to donate each period</summary>
+			<summary>The amount the user has committed to donate each period (in cents)</summary>
 		</key>
 		<key name="budget-remaining" type="i">
 			<default>500</default>
-			<summary>The amount the user has left in their budget</summary>
+			<summary>The amount the user has left in their budget (in cents)</summary>
 			<description>This budget-remaining value is increased by the budget-amount value at the end of a period</description>
 		</key>
 	</schema>
