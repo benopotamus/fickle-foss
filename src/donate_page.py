@@ -164,12 +164,18 @@ class DonatePage(Gtk.Box):
 
 			# Get icon from desktop file
 			desktop_file_name = app['desktop_file'] # e.g. 'geany.desktop'
-			app_info = Gio.DesktopAppInfo.new(desktop_file_name)
 
-			# Store themed_icon on row so it can be passed to DonationDialog
-			row.themed_icon = app_info.get_icon() # Returns a Gio.ThemedIcon
-			if row.themed_icon is None:
-				continue
+			try:
+				app_info = Gio.DesktopAppInfo.new(desktop_file_name)
+				# Store themed_icon on row so it can be passed to DonationDialog
+				row.themed_icon = app_info.get_icon() # Returns a Gio.ThemedIcon
+				if row.themed_icon is None:
+					continue
+
+			# Uninstalled apps remove their desktop file which causes this TypeError when trying to get the app's icon
+			# This fallback uses the default "app with no icon" icon
+			except TypeError:
+				row.themed_icon = Gio.ThemedIcon.new('application-x-executable')
 
 			row_icon = Gtk.Image.new_from_gicon(row.themed_icon)
 			# row_icon.set_icon_size(Gtk.IconSize.LARGE)
