@@ -1,0 +1,48 @@
+---
+# Flatpak manifest for Fickle FOSS
+# https://github.com/benopotamus/fickle-foss
+#
+# Build with:
+#   flatpak-builder --user --force-clean --install builddir giving.fickle.foss.yaml
+#   flatpak run giving.fickle.foss
+#
+# Or bundle a redistributable .flatpak with:
+#   flatpak build-export repo builddir
+#   flatpak build-bundle repo giving.fickle.foss.flatpak giving.fickle.foss
+#
+id: giving.fickle.foss
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: fickle-foss
+
+separate-locales: false
+
+finish-args:
+  # Networking, to open donation / project links from the app.
+  - --share=network
+  - --share=ipc
+  # Display: prefer Wayland, fall back to X11, enable GPU.
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+
+  # Read-only access to installed desktop files so the app can map the
+  # apps tracked by fickle-foss-tracker to their real names and icons.
+  - --filesystem=home/.local/share/applications:ro
+  - --filesystem=home/.local/share/flatpak/exports/share/applications:ro
+  - --filesystem=/var/lib/flatpak/exports/share/applications:ro
+
+  # Read/write the fickle-foss-tracker database. fickle-foss-tracker runs
+  # on the host and keeps its data in ~/.local/share/fickle-foss/, which
+  # this app reads usage from and writes donations to.
+  - --filesystem=home/.local/share/fickle-foss
+
+modules:
+  - name: fickle-foss
+    buildsystem: meson
+    sources:
+      - type: git
+        url: https://github.com/benopotamus/fickle-foss.git
+        tag: v0.1.1
+        commit: 17361a2afddb034cceef08959cc355f94ea469c8
