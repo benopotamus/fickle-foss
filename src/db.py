@@ -87,13 +87,14 @@ def get_donations_groups(donation_freq):
 def create_donation(donation_date, amount, app_id):
 	"""Saves a donation"""
 	conn = get_conn()
-	conn.execute('''
+	donation_id = conn.execute('''
 		INSERT INTO Donations (date, amount, app_id)
 		VALUES(?, ?, ?)
 		RETURNING id
-	''', (donation_date.strftime("%Y-%m-%d"), amount, app_id))
+	''', (donation_date.strftime("%Y-%m-%d"), amount, app_id)).fetchone()[0]
 	conn.commit()
 	conn.close()
+	return donation_id
 
 def update_donation(donation_date, amount, donation_id):
 	"""Saves a donation"""
@@ -116,22 +117,35 @@ def delete_donation(donation_id):
 	conn.close()
 
 def get_or_create_app_id_for_de(de_name):
-	"""Returns the Apps.id for the current desktop environment.
-	The DE is stored as an ordinary row in Apps (with desktop_file='DE').
+	"""Returns the Apps.id and amount_donated_this_year for the current desktop environment.
+	Note: The DE is stored as an ordinary row in Apps (with desktop_file='DE').
 	"""
 	conn = get_conn()
-	row = conn.execute('''SELECT id FROM Apps WHERE name=?''', (de_name,)).fetchone()
+	conn.row_factory = sqlite3.Row
+	row = conn.execute("""
+		SELECT 	id, 
+				COALESCE(YearDonations.total, 0) AS amount_donated_this_year
+		FROM 	Apps 
+				LEFT JOIN (
+					SELECT app_id, SUM(amount) AS total
+					FROM   Donations
+					WHERE  strftime('%Y', date) = ?
+					GROUP BY app_id
+				) AS YearDonations ON YearDonations.app_id = Apps.id
+		WHERE 	name=?
+		""", (str(date.today().year), de_name)).fetchone()
 	if row:
 		de_id = row[0]
+		amount_donated_this_year = row[1]
 	else:
 		de_id = conn.execute('''
 			INSERT INTO Apps (name, desktop_file)
 			VALUES(?, ?)
 			RETURNING id
 		''', (de_name, 'DE')).fetchone()[0]
-		conn.commit()
-	conn.close()
-	return de_id
+		amount_donated_this_year = 0
+	conn.commit()
+	return de_id, amount_donated_this_year
 
 def get_amount_donated_to_app_this_year(app_id):
 	"""Returns the total amount donated to a given app (or the DE "app") so far this year. 

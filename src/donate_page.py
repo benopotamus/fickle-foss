@@ -17,13 +17,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import locale
 from datetime import date, timedelta
 from calendar import monthrange
 from decimal import Decimal
 from gi.repository import Adw, Gtk, Gio, GObject
 
-from .db import get_apps_used_list, get_or_create_app_id_for_de
+from . import db
 from . import helpers
 from .donation_dialog import DonationDialog
 
@@ -57,42 +56,20 @@ class DonatePage(Gtk.Box):
 		self.set_period_name()
 		self.populate_apps_used_list()
 
-
 		# The user's desktop environment has a permanent place on the donate page
 		# e.g. "GNOME", "KDE", "XFCE"
 		de_name, de_icon = helpers.get_de_name_and_icon()
-		de_app_id = get_or_create_app_id_for_de(de_name)
-
+		de_app_id, de_amount_donated_this_year = db.get_or_create_app_id_for_de(de_name)
 		de_row = Adw.ActionRow(title=de_name)
 		de_row.app_id = de_app_id
 		de_row.themed_icon = de_icon # Store themed icon so it can be passed to dialog box later
-		icon = Gtk.Image.new_from_gicon(de_row.themed_icon)
-		icon.add_css_class('icon-dropshadow')
-		icon.set_pixel_size(64)
-		icon.set_margin_top(12)
-		icon.set_margin_bottom(12)
-		de_row.add_prefix(icon)
-
-		de_box = Gtk.Box(spacing=4, valign=Gtk.Align.CENTER)
-		de_label_amount = Gtk.Label()
-		de_label_amount.add_css_class('caption')
-		de_label_amount.add_css_class('bold')
-		de_label_clarifier = Gtk.Label(label='(this year)')
-		de_label_clarifier.add_css_class('subtitle')
-		de_box.append(de_label_amount)
-		de_box.append(de_label_clarifier)
-		de_row.add_suffix(de_box)
-
-		de_state = self.store.get_or_create(de_app_id)
-		self.bind_amount_donated(de_state, de_label_amount, de_box)
-
+		self.populate_row(de_row, de_amount_donated_this_year)
 		de_row.set_activatable(True)
 		self.de_box.append(de_row)
-
+		self.de_box.connect("row-activated", self.on_row_clicked)
 
 		# Open donation dialog box when an app row (or the DE row) is clicked
 		self.apps_listbox.connect("row-activated", self.on_row_clicked)
-		self.de_box.connect("row-activated", self.on_row_clicked)
 
 	def bind_amount_donated(self, state, label, box):
 		"""Binds an AppYearDonationState's amount_donated_this_year to a label's text
@@ -154,7 +131,7 @@ class DonatePage(Gtk.Box):
 	def populate_apps_used_list(self):
 		# Clear list before populating (not needed first time, but needed all other times)
 		self.apps_listbox.remove_all()
-		apps_used_list = get_apps_used_list(self.from_date.strftime("%Y-%m-%d"), self.to_date.strftime("%Y-%m-%d"))
+		apps_used_list = db.get_apps_used_list(self.from_date.strftime("%Y-%m-%d"), self.to_date.strftime("%Y-%m-%d"))
 
 		for app in apps_used_list:
 			row = Adw.ActionRow(title=app['name'])
@@ -171,39 +148,12 @@ class DonatePage(Gtk.Box):
 				row.themed_icon = app_info.get_icon() # Returns a Gio.ThemedIcon
 				if row.themed_icon is None:
 					continue
-
 			# Uninstalled apps remove their desktop file which causes this TypeError when trying to get the app's icon
 			# This fallback uses the default "app with no icon" icon
 			except TypeError:
 				row.themed_icon = Gio.ThemedIcon.new('application-x-executable')
 
-			row_icon = Gtk.Image.new_from_gicon(row.themed_icon)
-			# row_icon.set_icon_size(Gtk.IconSize.LARGE)
-			row_icon.set_pixel_size(64)
-			row_icon.add_css_class('icon-dropshadow')
-			row_icon.set_margin_top(12)
-			row_icon.set_margin_bottom(12)
-
-			row.add_prefix(row_icon)
-			row.set_subtitle(f"{str(app['days_used'])} days")
-
-			# Tag showing the amount donated this year - bound to the store (seeded with
-			# the value this query just fetched) so it updates live on donation changes,
-			# without needing populate_apps_used_list to run again.
-			box = Gtk.Box(spacing=4, valign=Gtk.Align.CENTER)
-			label_amount = Gtk.Label()
-			label_amount.add_css_class('caption')
-			label_amount.add_css_class('bold')
-			label_clarifier = Gtk.Label(label='(this year)')
-			label_clarifier.add_css_class('subtitle')
-			box.append(label_amount)
-			box.append(label_clarifier)
-			row.add_suffix(box)
-
-			state = self.store.get_or_create(app['id'], amount_donated_this_year=app['amount_donated_this_year'])
-			self.bind_amount_donated(state, label_amount, box)
-
-			row.set_activatable(True)
+			self.populate_row(row, app['amount_donated_this_year'], app['days_used'])
 			self.apps_listbox.append(row)
 
 		# Display the listbox or placeholder StackPage based on whether there are any apps to display
@@ -211,6 +161,35 @@ class DonatePage(Gtk.Box):
 			self.apps_list_stack.set_visible_child(self.apps_listbox)
 		else:
 			self.apps_list_stack.set_visible_child(self.apps_placeholder)
+
+	def populate_row(self, row, amount_donated_this_year=0, days_used=None):
+		icon = Gtk.Image.new_from_gicon(row.themed_icon)
+		# icon.set_icon_size(Gtk.IconSize.LARGE)
+		icon.add_css_class('icon-dropshadow')
+		icon.set_pixel_size(64)
+		icon.set_margin_top(12)
+		icon.set_margin_bottom(12)
+		row.add_prefix(icon)
+		if days_used:
+			row.set_subtitle(f"{str(days_used)} days")
+
+		# Tag showing the amount donated this year - bound to the store (seeded with
+		# the value this query just fetched) so it updates live on donation changes,
+		# without needing populate_apps_used_list to run again.
+		box = Gtk.Box(spacing=4, valign=Gtk.Align.CENTER)
+		label_amount = Gtk.Label()
+		label_amount.add_css_class('caption')
+		label_amount.add_css_class('bold')
+		label_clarifier = Gtk.Label(label='(this year)')
+		label_clarifier.add_css_class('subtitle')
+		box.append(label_amount)
+		box.append(label_clarifier)
+		row.add_suffix(box)
+
+		state = self.store.get_or_create(row.app_id, amount_donated_this_year=amount_donated_this_year)
+		self.bind_amount_donated(state, label_amount, box)
+
+		row.set_activatable(True)
 
 	# SIGNAL
 	def show_next_period(self, _):
