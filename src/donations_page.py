@@ -164,10 +164,16 @@ class DonationsPage(Gtk.Stack):
 				if donation['desktop_file'] == 'DE':
 					_, themed_icon = helpers.get_de_name_and_icon()
 				else:
-					app_info = Gio.DesktopAppInfo.new(donation['desktop_file'])
-					themed_icon = app_info.get_icon() # Returns a Gio.ThemedIcon
-					if themed_icon is None:
-						continue
+					try:
+						app_info = Gio.DesktopAppInfo.new(donation['desktop_file'])
+						themed_icon = app_info.get_icon() # Returns a Gio.ThemedIcon
+						if themed_icon is None:
+							continue
+					except TypeError:
+						# Uninstalled apps remove their desktop file which causes this TypeError when trying to get the app's icon
+						# This can also occur when Fickle FOSS doesn't have permission to access the directory where the .desktop file is located
+						# This fallback uses the default "app with no icon" icon
+						themed_icon = Gio.ThemedIcon.new('application-x-executable')
 
 				item = DonationItem(
 					donation_id = donation['id'],

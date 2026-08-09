@@ -148,9 +148,10 @@ class DonatePage(Gtk.Box):
 				row.themed_icon = app_info.get_icon() # Returns a Gio.ThemedIcon
 				if row.themed_icon is None:
 					continue
-			# Uninstalled apps remove their desktop file which causes this TypeError when trying to get the app's icon
-			# This fallback uses the default "app with no icon" icon
 			except TypeError:
+				# Uninstalled apps remove their desktop file which causes this TypeError when trying to get the app's icon
+				# This can also occur when Fickle FOSS doesn't have permission to access the directory where the .desktop file is located
+				# This fallback uses the default "app with no icon" icon
 				row.themed_icon = Gio.ThemedIcon.new('application-x-executable')
 
 			self.populate_row(row, app['amount_donated_this_year'], app['days_used'])
