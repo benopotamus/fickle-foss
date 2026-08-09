@@ -32,6 +32,9 @@ finish-args:
   - --filesystem=home/.local/share/applications:ro
   - --filesystem=home/.local/share/flatpak/exports/share/applications:ro
   - --filesystem=/var/lib/flatpak/exports/share/applications:ro
+  
+  # The below filesystem access won't work because /usr is reserved but it is needed for getting application icons for apps installed by package managers
+  # Flatpak says: `F: Not sharing "/usr/share/applications" with sandbox: Path "/usr" is reserved by Flatpak`
   - --filesystem=/usr/share/applications:ro
 
   # Read/write the fickle-foss-tracker database. fickle-foss-tracker runs
