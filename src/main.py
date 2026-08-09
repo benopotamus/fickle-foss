@@ -52,6 +52,7 @@ class FickleFossApplication(Adw.Application):
 
 		# Used for currency symbols and date formats
 		locale.setlocale(locale.LC_ALL, '')
+		# locale.setlocale(locale.LC_ALL, 'de_DE.UTF-8') # Uncomment to test a different locale
 
 		# Setup CSS
 		css_provider = Gtk.CssProvider()

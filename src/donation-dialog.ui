@@ -40,12 +40,6 @@
 									<object class="AdwEntryRow" id="amount_field">
 										<property name="title">Amount</property>
 										<property name="input-purpose">NUMBER</property>
-										<child type="prefix">
-											<object class="GtkLabel" id="currency_symbol">
-												<property name="label">$</property>
-												<style><class name="dim-label"/></style>
-											</object>
-										</child>
 									</object>
 								</child>
 								<child>

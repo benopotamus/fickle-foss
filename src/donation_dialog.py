@@ -57,6 +57,15 @@ class DonationDialog(Adw.Dialog):
 		self.app_name_text = app_name
 		self.themed_icon = themed_icon
 
+		# Add currency symbol hint to amount field
+		l = locale.localeconv()
+		symbol = Gtk.Label(label=l['currency_symbol'])
+		symbol.add_css_class('dim-label')
+		if l['p_cs_precedes']: # If symbol precedes amount value
+			self.amount_field.add_prefix(symbol)
+		else:
+			self.amount_field.add_suffix(symbol)
+
 		# Hide delete button if no donation_id (which indicates this is a new donation, not an edit to an existing one)
 		if not donation_id:
 			self.delete_button.set_visible(False)
