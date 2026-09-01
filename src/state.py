@@ -18,10 +18,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 from gi.repository import GObject, Gio
-
 from . import db
-from . import dbus
-
 
 class AppYearDonationState(GObject.Object):
 	"""Holds the live 'amount donated this year' figure for one app (or the desktop

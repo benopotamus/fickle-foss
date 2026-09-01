@@ -1,4 +1,4 @@
-from gi.repository import Gtk, Gio, Gdk, GLib
+from gi.repository import Gio, Gdk, GLib
 from .db import get_app_desktop_files
 
 def get_app_icons():

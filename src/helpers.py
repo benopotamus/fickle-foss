@@ -2,7 +2,7 @@ import locale, os
 from decimal import Decimal
 from datetime import date, timedelta
 from calendar import monthrange
-from gi.repository import Gio, GioUnix, Gtk, Gdk, GLib
+from gi.repository import Gio, GioUnix, Gtk
 
 from . import dbus
 

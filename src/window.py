@@ -17,7 +17,6 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from decimal import Decimal
 from gi.repository import Adw, Gtk, Gio, GObject
 
 from . import helpers
