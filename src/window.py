@@ -50,10 +50,20 @@ class FickleFossWindow(Adw.ApplicationWindow):
 			self.budget_label, # target object
 			"label", # target property
 			GObject.BindingFlags.SYNC_CREATE,
-			transform_to=lambda _, amount: f"{helpers.to_money(amount)} remaining in budget"
+			transform_to = self.get_budget_label_text
 		)
 
 		# TODO If Fickle FOSS doesn't have access to the /usr/share/applications directory, AND Fickle FOSS Tracker extension isn't running, pop up a dialog box telling the user about the need for the extension. Include a link to Tracker's page on extensions.gnome.org so user can easily install it
+	
+	def get_budget_label_text(self, _, amount):
+		if amount < 0:
+			self.budget_label.add_css_class("warning")
+			return f"{helpers.to_money(-amount)} over budget"
+		else:
+			self.budget_label.remove_css_class("warning")
+			return f"{helpers.to_money(amount)} remaining in budget"
+
+
 
 	def on_page_changed(self, stack, _):
 		visible_child_name = stack.get_visible_child_name()
