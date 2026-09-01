@@ -28,10 +28,10 @@
 				<!-- Frequency -->
 				<child>
 					<object class="AdwPreferencesGroup">
-						<property name="title" translatable="yes">Frequency</property>
+						<!-- <property name="title" translatable="yes">Frequency</property> -->
 						<child>
 							<object class="AdwActionRow">
-								<property name="title" translatable="yes">Weekly</property>
+								<property name="title" translatable="yes">Per week</property>
 								<property name="activatable-widget">freq_weekly</property>
 								<child type="prefix">
 									<object class="GtkCheckButton" id="freq_weekly"/>
@@ -40,7 +40,7 @@
 						</child>
 						<child>
 							<object class="AdwActionRow">
-								<property name="title" translatable="yes">Monthly</property>
+								<property name="title" translatable="yes">Per month</property>
 								<property name="activatable-widget">freq_monthly</property>
 								<child type="prefix">
 									<object class="GtkCheckButton" id="freq_monthly">
@@ -51,7 +51,7 @@
 						</child>
 						<child>
 							<object class="AdwActionRow">
-								<property name="title" translatable="yes">Yearly</property>
+								<property name="title" translatable="yes">Per year</property>
 								<property name="activatable-widget">freq_yearly</property>
 								<child type="prefix">
 									<object class="GtkCheckButton" id="freq_yearly">
