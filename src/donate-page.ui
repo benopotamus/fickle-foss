@@ -16,7 +16,7 @@
 			<object class="GtkCenterBox">
 				<child type="start">
 					<object class="GtkLabel">
-						<property name="label" translatable="yes">Apps</property>
+						<property name="label" translatable="yes">Apps Used</property>
 						<style>
 							<class name="title-4"/>
 						</style>

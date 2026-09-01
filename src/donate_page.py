@@ -132,7 +132,7 @@ class DonatePage(Gtk.Box):
 		elif self.donation_freq == "yearly":
 			days = 365
 		
-		self.last_x_days_heading.set_label(f"Last {days} days")
+		self.last_x_days_heading.set_label(f"Usage over last {days} days")
 		self.apps_placeholder.set_description(f"No apps used in the last {days} days")
 
 
