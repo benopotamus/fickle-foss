@@ -19,7 +19,6 @@
 
 from pathlib import Path
 from datetime import date, timedelta
-from calendar import monthrange
 from decimal import Decimal
 from gi.repository import Adw, Gtk, Gio, GObject
 
@@ -43,17 +42,12 @@ class DonatePage(Gtk.Box):
 	apps_listbox = Gtk.Template.Child()
 	apps_list_stack = Gtk.Template.Child()
 	apps_placeholder = Gtk.Template.Child()
-	period_name = Gtk.Template.Child()
-	prev_period_button = Gtk.Template.Child()
-	next_period_button = Gtk.Template.Child()
+	last_x_days_heading = Gtk.Template.Child()
 
 
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self.store = Gio.Application.get_default().store
-
-		self.prev_period_button.connect("clicked", self.show_prev_period)
-		self.next_period_button.connect("clicked", self.show_next_period)
 
 		self.settings = Gio.Settings(schema_id="giving.fickle.foss")
 		self.donation_freq = self.settings.get_string("donation-frequency") # e.g. "monthly"
@@ -112,36 +106,34 @@ class DonatePage(Gtk.Box):
 	def init_period(self):
 		# from_date is always today so the user always starts with today's period
 		self.date_ = date.today()
+		self.to_date = self.date_
 
 		if self.donation_freq == "weekly":
-			# A "week" is Monday to Sunday
-			# We set `from_date` to the 1st day of the current week by subtracting whatever `weekday()` (Monday==0)
-			# And set `to_date` to 6 days later (which 1st+6=7)
-			self.from_date = self.date_ - timedelta(days=self.date_.weekday())
-			self.to_date = self.from_date + timedelta(days=6)
+			self.from_date = self.date_ - timedelta(days=7)
 
 		elif self.donation_freq == "monthly":
-			self.from_date = self.date_.replace(day=1)
-			# to_date is dependent on how many days in the month - uses calendar.monthrange
-			# https://docs.python.org/3/library/calendar.html#calendar.monthrange
-			self.to_date = self.from_date.replace(day=monthrange(self.from_date.year, self.from_date.month)[1])
+			self.from_date = self.date_ - timedelta(days=30)
 
 		elif self.donation_freq == "yearly":
-			self.from_date = self.date_.replace(day=1, month=1)
-			# to_date is 31 December of current year
-			self.to_date = self.from_date.replace(day=31, month=12)
+			self.from_date = self.date_ - timedelta(days=365)
 
 		# TODO maybe add infinite in the future. All donations are lumped in the same period.
 		# elif self.donation_freq == "infinite":
 		# 	self.from_date = date_.min
-		# 	self.to_date = date_.max
 
 
 	def set_period_name(self):
-		"""Sets the period_name label
-		`self.from_date` is added to self by `self.init_period` - which is always called first.
+		"""Sets the '[x] days' labels
 		"""
-		self.period_name.set_label(helpers.get_period_name(self.from_date, self.donation_freq))
+		if self.donation_freq == "weekly":
+			days = 7
+		elif self.donation_freq == "monthly":
+			days = 30
+		elif self.donation_freq == "yearly":
+			days = 365
+		
+		self.last_x_days_heading.set_label(f"Last {days} days")
+		self.apps_placeholder.set_description(f"No apps used in the last {days} days")
 
 
 	def populate_apps_used_list(self):
@@ -157,7 +149,7 @@ class DonatePage(Gtk.Box):
 			row.desktop_file = app['desktop_file']
 
 			# Skip apps that are in the ignore list
-			# Predominantly for ignoring apps that don't take donations e.g. 'steam.desktop'
+			# Predominantly for ignoring apps that don't want donations e.g. 'steam.desktop'
 			if app['desktop_file'] in IGNORE:
 				continue
 
@@ -198,44 +190,6 @@ class DonatePage(Gtk.Box):
 		self.bind_amount_donated(state, label_amount, box)
 
 		row.set_activatable(True)
-
-	# SIGNAL
-	def show_next_period(self, _):
-		"""Sets the instance's variables of from_date and to_date to the next period's values, and updates the apps list with records within that range."""
-		if self.donation_freq == "weekly":
-			self.from_date = self.from_date + timedelta(weeks=1)
-			self.to_date = self.to_date + timedelta(weeks=1)
-
-		elif self.donation_freq == "monthly":
-			self.from_date = self.to_date + timedelta(days=1) # +1 day to get to the next month
-			# to_date is dependent on how many days in the month - uses calendar.monthrange to get the number of days in from_date's month
-			# https://docs.python.org/3/library/calendar.html#calendar.monthrange
-			self.to_date = self.from_date.replace(day=monthrange(self.from_date.year, self.from_date.month)[1])
-
-		elif self.donation_freq == "yearly":
-			self.from_date = self.to_date + timedelta(days=1) # +1 day to get to the next year
-			self.to_date = self.from_date.replace(day=31, month=12) # 31 December of from_date's year
-
-		self.populate_apps_used_list()
-		self.set_period_name()
-
-	# SIGNAL
-	def show_prev_period(self, _):
-		"""Sets the instance's variables of from_date and to_date to the previous period's values, and updates the apps list with records within that range."""
-		if self.donation_freq == "weekly":
-			self.from_date = self.from_date - timedelta(weeks=1)
-			self.to_date = self.to_date - timedelta(weeks=1)
-
-		elif self.donation_freq == "monthly":
-			self.to_date = self.from_date - timedelta(days=1) # -1 day to get to the last day of the previous month month
-			self.from_date = self.to_date.replace(day=1)
-
-		elif self.donation_freq == "yearly":
-			self.to_date = self.from_date - timedelta(days=1) # -1 day to get to the last day of the previous year
-			self.from_date = self.to_date.replace(day=1, month=1) # 31 December of to_date's year
-
-		self.populate_apps_used_list()
-		self.set_period_name()
 
 	# SIGNAL
 	def on_row_clicked(self, listbox:Gtk.ListBox, row:Gtk.ListBoxRow):

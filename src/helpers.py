@@ -15,7 +15,6 @@ def get_period_name(date_, donation_freq):
 
 	UI labels
 		Donations Page: group names (via db.get_donations_groups)
-		Donate Page: period name next to the period selection back/forward buttons
 
 	Keys
 		Donations Page: Each donation group has a name and is used when a donation is updated to check if it has moved to a different period.
@@ -116,7 +115,8 @@ def get_app_icon_image(desktop_file, size):
 
 	if app_info:
 		icon = app_info.get_icon()
-		icon_image = Gtk.Image.new_from_gicon(icon)
+		if icon:
+			icon_image = Gtk.Image.new_from_gicon(icon)
 	else:
 		# If file system check didn't work, try app_icons texture store (returned by Fickle FOSS Tracker via Dbus)
 		try:

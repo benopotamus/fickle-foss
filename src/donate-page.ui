@@ -15,45 +15,16 @@
 		<child>
 			<object class="GtkCenterBox">
 				<child type="start">
-					<object class="GtkBox">
-						<child>
-							<object class="GtkLabel">
-								<property name="label" translatable="yes">Apps</property>
-								<style>
-									<class name="title-4"/>
-								</style>
-							</object>
-						</child>
-						<child>
-							<object class="GtkLabel">
-								<property name="label" translatable="yes"> (days used)</property>
-							</object>
-						</child>
+					<object class="GtkLabel">
+						<property name="label" translatable="yes">Apps</property>
+						<style>
+							<class name="title-4"/>
+						</style>
 					</object>
 				</child>
 				<child type="end">
-					<object class="GtkBox">
-						<child>
-							<object class="GtkLabel" id="period_name"></object>
-						</child>
-						<child>
-							<object class="GtkBox">
-								<property name="margin-start">12</property>
-								<style>
-									<class name="linked"/>
-								</style>
-								<child>
-									<object class="GtkButton" id="prev_period_button">
-										<property name="icon-name">go-previous-symbolic</property>
-									</object>
-								</child>
-								<child>
-									<object class="GtkButton" id="next_period_button">
-										<property name="icon-name">go-next-symbolic</property>
-									</object>
-								</child>
-							</object>
-						</child>
+					<object class="GtkLabel" id="last_x_days_heading">
+						<property name="label" translatable="yes">Last [x] days</property>
 					</object>
 				</child>
 			</object>
@@ -64,7 +35,7 @@
 				<child>
 					<object class="AdwStatusPage" id="apps_placeholder">
 						<property name="title" translatable="yes">No App Usage</property>
-						<property name="description" translatable="yes">No apps used during this period</property>
+						<property name="description" translatable="yes">No apps used in the last [x] days</property>
 					</object>
 				</child>
 				<child>
