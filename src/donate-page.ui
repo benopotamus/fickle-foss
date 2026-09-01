@@ -71,6 +71,7 @@
 					<object class="GtkListBox" id="apps_listbox">
 						<property name="selection-mode">none</property>
 						<property name="margin-top">12</property>
+						<property name="valign">start</property>
 						<style>
 							<class name="boxed-list"/>
 						</style>

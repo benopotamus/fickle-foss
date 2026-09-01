@@ -43,8 +43,6 @@ class FickleFossWindow(Adw.ApplicationWindow):
 		self.settings.bind("window-maximized", self, "maximized", Gio.SettingsBindFlags.DEFAULT)
 		self.settings.bind("window-fullscreen", self, "fullscreened", Gio.SettingsBindFlags.DEFAULT)
 
-		# self.stack.connect("notify::visible-child", self.on_page_changed)
-
 		store = Gio.Application.get_default().store # AppStateStore instance from state.py
 		# https://api.pygobject.gnome.org/GObject-2.0/class-Object.html#methods
 		store.bind_property(
@@ -54,6 +52,8 @@ class FickleFossWindow(Adw.ApplicationWindow):
 			GObject.BindingFlags.SYNC_CREATE,
 			transform_to=lambda _, amount: f"{helpers.to_money(amount)} remaining in budget"
 		)
+
+		# TODO If Fickle FOSS doesn't have access to the /usr/share/applications directory, AND Fickle FOSS Tracker extension isn't running, pop up a dialog box telling the user about the need for the extension. Include a link to Tracker's page on extensions.gnome.org so user can easily install it
 
 	def on_page_changed(self, stack, _):
 		visible_child_name = stack.get_visible_child_name()

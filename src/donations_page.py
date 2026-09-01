@@ -34,13 +34,13 @@ class DonationItem(GObject.Object):
 
 	amount = GObject.Property(type=int, default=0)
 
-	def __init__(self, donation_id, app_id, app_name, themed_icon, donation_date, amount):
+	def __init__(self, donation_id, app_id, app_name, donation_date, amount, desktop_file):
 		super().__init__(amount=Decimal(amount))
-		self.id = donation_id
-		self.app_id = app_id
+		self.id = donation_id # row.id in db
+		self.app_id = app_id # row.id in db
 		self.app_name = app_name
-		self.themed_icon = themed_icon
 		self.date = donation_date  # ISO string e.g. "2026-07-15"
+		self.desktop_file = desktop_file # app's desktop file name
 
 
 def _compare_by_date_desc(item_a, item_b):
@@ -90,13 +90,12 @@ class DonationGroup(Gtk.Box):
 		)
 		row.add_suffix(amount_label)
 
-		row_icon = Gtk.Image.new_from_gicon(item.themed_icon)
-		row_icon.set_pixel_size(64)
-		row_icon.add_css_class('icon-dropshadow')
-		row_icon.set_margin_end(6)
-		row_icon.set_margin_top(12)
-		row_icon.set_margin_bottom(12)
-		row.add_prefix(row_icon)
+		icon_image = helpers.get_app_icon_image(item.desktop_file, 64)
+		icon_image.add_css_class('icon-dropshadow')
+		icon_image.set_margin_end(6)
+		icon_image.set_margin_top(12)
+		icon_image.set_margin_bottom(12)
+		row.add_prefix(icon_image)
 
 		row.set_activatable(True)
 		return row
@@ -107,8 +106,8 @@ class DonationGroup(Gtk.Box):
 		dialog = DonationDialog(
 			app_id = item.app_id,
 			donation_id = item.id,
+			desktop_file = item.desktop_file,
 			app_name = item.app_name,
-			themed_icon = item.themed_icon,
 			donation_date = item.date,
 			donation_amount = item.amount,
 		)
@@ -159,29 +158,13 @@ class DonationsPage(Gtk.Stack):
 			donation_group = DonationGroup(group_name)
 
 			for donation in group_rows:
-				# Get icon
-				# Special case for DE
-				if donation['desktop_file'] == 'DE':
-					_, themed_icon = helpers.get_de_name_and_icon()
-				else:
-					try:
-						app_info = Gio.DesktopAppInfo.new(donation['desktop_file'])
-						themed_icon = app_info.get_icon() # Returns a Gio.ThemedIcon
-						if themed_icon is None:
-							continue
-					except TypeError:
-						# Uninstalled apps remove their desktop file which causes this TypeError when trying to get the app's icon
-						# This can also occur when Fickle FOSS doesn't have permission to access the directory where the .desktop file is located
-						# This fallback uses the default "app with no icon" icon
-						themed_icon = Gio.ThemedIcon.new('application-x-executable')
-
 				item = DonationItem(
-					donation_id = donation['id'],
-					app_id = donation['app_id'],
+					donation_id = donation['id'], # row.id in db
+					app_id = donation['app_id'], # row.id in db
 					app_name = donation['name'],
-					themed_icon = themed_icon,
 					donation_date = donation['date'],
 					amount = donation['amount'],
+					desktop_file = donation['desktop_file'] # app's desktop file name
 				)
 				donation_group.add_item(item)
 				self.items_by_id[item.id] = (item, donation_group)
@@ -192,7 +175,7 @@ class DonationsPage(Gtk.Stack):
 		# Need to make page visible in case placeholder was being displayed previously
 		self.set_visible_child(self.donation_groups_box)
 
-	def handle_donation_created(self, donation_id, app_id, app_name, themed_icon, new_date, amount):
+	def handle_donation_created(self, donation_id, app_id, app_name, new_date, amount, desktop_file):
 		"""Adds a new donation row.
 		Does an in-place add unless it would result in a new group as well, in which case falls back to populate_donations().
 		"""
@@ -214,9 +197,9 @@ class DonationsPage(Gtk.Stack):
 			donation_id = donation_id,
 			app_id = app_id,
 			app_name = app_name,
-			themed_icon = themed_icon,
 			donation_date = new_date,
 			amount = amount,
+			desktop_file = desktop_file
 		)
 		# add_item uses insert_sorted, so the row lands in the right place within the
 		# group and bind_model builds the widget - nothing to touch directly here.

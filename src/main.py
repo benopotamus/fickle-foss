@@ -63,6 +63,7 @@ class FickleFossApplication(Adw.Application):
 			Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
 		)
 
+
 	def do_activate(self):
 		"""Called when the application is activated.
 

@@ -20,6 +20,7 @@
 from gi.repository import GObject, Gio
 
 from . import db
+from . import dbus
 
 
 class AppYearDonationState(GObject.Object):
@@ -50,7 +51,6 @@ class AppStateStore(GObject.Object):
 	def __init__(self):
 		super().__init__()
 		self._apps = {}  # app_id -> AppYearDonationState
-
 		self.settings = Gio.Settings(schema_id="giving.fickle.foss")
 		self.budget_remaining = self.settings.get_int("budget-remaining")
 

@@ -84,6 +84,22 @@ def get_donations_groups(donation_freq):
 		groups.setdefault(key, []).append(row)
 	return groups
 
+def get_app_desktop_files():
+	"""Returns a list desktop_files (aka app ids) for apps used.
+	Used in dbus.py to send a list of app ids via DBus to Fickle FOSS Tracker Gnome extension and get app icons in return.
+
+	TODO consider limiting the list to apps that have been donated to, or used in the last x many days, where x is matches the donation frequency. The icons are used on the donations page (so we need icons for everything that has been donated to), and the donate page (so we need icons for all apps in the donation period (weekly, monthly, yearly, etc)). I'm expecting some users will ask for an infinite donation period (aka "don't group by donations by period") in the future so we'll leave this as a big grab everything for now. 
+	There's little downside in the near term. Limiting by period and donations is an optimisation that may make sense in the future.
+	"""
+	conn = get_conn()
+	apps = conn.execute("""
+		SELECT 	desktop_file
+		FROM	Apps
+		WHERE	desktop_file <> 'DE';
+	""").fetchall()
+	conn.close()
+	return [row[0] for row in apps]
+
 def create_donation(donation_date, amount, app_id):
 	"""Saves a donation"""
 	conn = get_conn()
@@ -117,8 +133,8 @@ def delete_donation(donation_id):
 	conn.close()
 
 def get_or_create_app_id_for_de(de_name):
-	"""Returns the Apps.id and amount_donated_this_year for the current desktop environment.
-	Note: The DE is stored as an ordinary row in Apps (with desktop_file='DE').
+	"""Returns the Apps.id and amount_donated_this_year for the current desktop environment (DE).
+	Note: Desktop environments are stored as ordinary rows in Apps (with desktop_file='DE').
 	"""
 	conn = get_conn()
 	conn.row_factory = sqlite3.Row
@@ -138,17 +154,17 @@ def get_or_create_app_id_for_de(de_name):
 		de_id = row[0]
 		amount_donated_this_year = row[1]
 	else:
-		de_id = conn.execute('''
+		de_id = conn.execute("""
 			INSERT INTO Apps (name, desktop_file)
 			VALUES(?, ?)
 			RETURNING id
-		''', (de_name, 'DE')).fetchone()[0]
+		""", (de_name, 'DE')).fetchone()[0]
 		amount_donated_this_year = 0
 	conn.commit()
 	return de_id, amount_donated_this_year
 
 def get_amount_donated_to_app_this_year(app_id):
-	"""Returns the total amount donated to a given app (or the DE "app") so far this year. 
+	"""Returns the total amount donated to a given app (or a DE "app") so far this year. 
 	Returns 0 if there are no donations yet."""
 	conn = get_conn()
 	total = conn.execute("""

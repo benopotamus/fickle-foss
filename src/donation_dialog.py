@@ -30,7 +30,7 @@ from . import helpers
 @Gtk.Template(resource_path='/giving/fickle/foss/donation-dialog.ui')
 class DonationDialog(Adw.Dialog):
 	__gtype_name__ = 'DonationDialog'
-	app_icon = Gtk.Template.Child()
+	main_box = Gtk.Template.Child()
 	app_name = Gtk.Template.Child()
 	amount_field = Gtk.Template.Child()
 	date_field = Gtk.Template.Child()
@@ -38,7 +38,7 @@ class DonationDialog(Adw.Dialog):
 	delete_button = Gtk.Template.Child()
 	cancel_button = Gtk.Template.Child()
 
-	def __init__(self, app_name, themed_icon, app_id, donation_id=None, donation_date=None, donation_amount=None, **kwargs):
+	def __init__(self, app_name, app_id, desktop_file, donation_id=None, donation_date=None, donation_amount=None, **kwargs):
 		"""Set up the dialog
 
 		This can be called in one of two ways:
@@ -49,13 +49,15 @@ class DonationDialog(Adw.Dialog):
 
 		self.store = Gio.Application.get_default().store
 
-		self.app_icon.set_from_gicon(themed_icon)
+		icon_image = helpers.get_app_icon_image(desktop_file, 96)		
+		self.main_box.prepend(icon_image)
+
 		self.app_name.set_label(app_name)
 
 		self.app_id = app_id
 		self.donation_id = donation_id
 		self.app_name_text = app_name
-		self.themed_icon = themed_icon
+		self.desktop_file = desktop_file
 
 		# Add currency symbol hint to amount field
 		l = locale.localeconv()
@@ -136,13 +138,19 @@ class DonationDialog(Adw.Dialog):
 			if self.donation_id:
 				db.update_donation(donation_date, amount_cents, self.donation_id)
 				self.get_root().donations_page.handle_donation_updated(
-					self.donation_id, donation_date.isoformat(), amount_cents
+					self.donation_id, 
+					donation_date.isoformat(), 
+					amount_cents
 				)
 			else:
 				donation_id = db.create_donation(donation_date, amount_cents, self.app_id)
 				self.get_root().donations_page.handle_donation_created(
-					donation_id, self.app_id, self.app_name_text, self.themed_icon,
-					donation_date.isoformat(), amount_cents
+					donation_id, 
+					self.app_id, 
+					self.app_name_text,
+					donation_date.isoformat(), 
+					amount_cents,
+					self.desktop_file
 				)
 
 			self.store.record_donation_change(self.app_id)

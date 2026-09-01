@@ -17,6 +17,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from pathlib import Path
 from datetime import date, timedelta
 from calendar import monthrange
 from decimal import Decimal
@@ -25,6 +26,15 @@ from gi.repository import Adw, Gtk, Gio, GObject
 from . import db
 from . import helpers
 from .donation_dialog import DonationDialog
+
+
+# Get list of apps that should not be displayed in the app list. E.g. 'steam.desktop'
+try:
+	with open(Path.home() / ".local" / "share" / "fickle-foss" / "ignore-list", 'r') as file:
+		IGNORE = file.read().splitlines()
+except FileNotFoundError:
+	IGNORE = []
+
 
 @Gtk.Template(resource_path='/giving/fickle/foss/donate-page.ui')
 class DonatePage(Gtk.Box):
@@ -58,12 +68,18 @@ class DonatePage(Gtk.Box):
 
 		# The user's desktop environment has a permanent place on the donate page
 		# e.g. "GNOME", "KDE", "XFCE"
-		de_name, de_icon = helpers.get_de_name_and_icon()
+		de_name = helpers.get_de_name()
 		de_app_id, de_amount_donated_this_year = db.get_or_create_app_id_for_de(de_name)
 		de_row = Adw.ActionRow(title=de_name)
 		de_row.app_id = de_app_id
-		de_row.themed_icon = de_icon # Store themed icon so it can be passed to dialog box later
-		self.populate_row(de_row, de_amount_donated_this_year)
+		de_row.desktop_file = 'DE'
+
+		self.populate_row(
+			de_row, 
+			helpers.get_app_icon_image('DE', 64), # this will lookup the correct icon for the DE where possible
+			de_amount_donated_this_year
+		)
+
 		de_row.set_activatable(True)
 		self.de_box.append(de_row)
 		self.de_box.connect("row-activated", self.on_row_clicked)
@@ -138,23 +154,19 @@ class DonatePage(Gtk.Box):
 
 			# Add app id to row so it can be used later when saving donations
 			row.app_id = app['id']
+			row.desktop_file = app['desktop_file']
 
-			# Get icon from desktop file
-			desktop_file_name = app['desktop_file'] # e.g. 'geany.desktop'
+			# Skip apps that are in the ignore list
+			# Predominantly for ignoring apps that don't take donations e.g. 'steam.desktop'
+			if app['desktop_file'] in IGNORE:
+				continue
 
-			try:
-				app_info = Gio.DesktopAppInfo.new(desktop_file_name)
-				# Store themed_icon on row so it can be passed to DonationDialog
-				row.themed_icon = app_info.get_icon() # Returns a Gio.ThemedIcon
-				if row.themed_icon is None:
-					continue
-			except TypeError:
-				# Uninstalled apps remove their desktop file which causes this TypeError when trying to get the app's icon
-				# This can also occur when Fickle FOSS doesn't have permission to access the directory where the .desktop file is located
-				# This fallback uses the default "app with no icon" icon
-				row.themed_icon = Gio.ThemedIcon.new('application-x-executable')
-
-			self.populate_row(row, app['amount_donated_this_year'], app['days_used'])
+			self.populate_row(
+				row, 
+				helpers.get_app_icon_image(app['desktop_file'], 64),
+				app['amount_donated_this_year'],
+				app['days_used'],
+			)
 			self.apps_listbox.append(row)
 
 		# Display the listbox or placeholder StackPage based on whether there are any apps to display
@@ -163,20 +175,14 @@ class DonatePage(Gtk.Box):
 		else:
 			self.apps_list_stack.set_visible_child(self.apps_placeholder)
 
-	def populate_row(self, row, amount_donated_this_year=0, days_used=None):
-		icon = Gtk.Image.new_from_gicon(row.themed_icon)
-		# icon.set_icon_size(Gtk.IconSize.LARGE)
-		icon.add_css_class('icon-dropshadow')
-		icon.set_pixel_size(64)
-		icon.set_margin_top(12)
-		icon.set_margin_bottom(12)
-		row.add_prefix(icon)
+	def populate_row(self, row, icon_image, amount_donated_this_year=0, days_used=None):
+		icon_image.add_css_class('icon-dropshadow')
+		icon_image.set_margin_top(12)
+		icon_image.set_margin_bottom(12)
+		row.add_prefix(icon_image)
 		if days_used:
 			row.set_subtitle(f"{str(days_used)} days")
 
-		# Tag showing the amount donated this year - bound to the store (seeded with
-		# the value this query just fetched) so it updates live on donation changes,
-		# without needing populate_apps_used_list to run again.
 		box = Gtk.Box(spacing=4, valign=Gtk.Align.CENTER)
 		label_amount = Gtk.Label()
 		label_amount.add_css_class('caption')
@@ -187,6 +193,7 @@ class DonatePage(Gtk.Box):
 		box.append(label_clarifier)
 		row.add_suffix(box)
 
+		# Bind to Store so values are updated without refreshing whole list (and losing scroll position)
 		state = self.store.get_or_create(row.app_id, amount_donated_this_year=amount_donated_this_year)
 		self.bind_amount_donated(state, label_amount, box)
 
@@ -235,6 +242,6 @@ class DonatePage(Gtk.Box):
 		dialog = DonationDialog(
 			app_id = row.app_id,
 			app_name = row.get_title(),
-			themed_icon = row.themed_icon,
+			desktop_file = row.desktop_file,
 		)
 		dialog.present(self)
