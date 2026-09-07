@@ -31,6 +31,7 @@ from gi.repository import Gtk, Gio, Adw, Gdk
 from .window import FickleFossWindow
 from .preferences_dialog import PreferencesDialog
 from .state import AppStateStore
+from . import db
 
 
 class FickleFossApplication(Adw.Application):
@@ -62,6 +63,9 @@ class FickleFossApplication(Adw.Application):
 			css_provider,
 			Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
 		)
+
+		db.init_db() # Ensure database exists
+		db.process_queue() # Add queued records from Fickle FOSS Tracker Gnome extension
 
 
 	def do_activate(self):

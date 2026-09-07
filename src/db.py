@@ -7,16 +7,81 @@ from pathlib import Path
 from . import helpers
 
 DB_PATH = Path.home() / ".local" / "share" / "fickle-foss" / "fickle-foss.db"
+QUEUE_PATH = Path.home() / ".local" / "share" / "fickle-foss" / "dbqueue"
 
 
 def get_conn():
-	if not DB_PATH.exists():
-		# TODO add logging and make these error logs
-		print(f"Database not found at {DB_PATH}")
-		print("The database is created by fickle_foss_tracker.py")
-		raise SystemExit(1)
+	"""Returns a connection to fickle-foss.db"""
 	conn = sqlite3.connect(DB_PATH)
 	return conn
+
+def init_db():
+	"""Set up database - create tables etc. Run on startup."""
+	DB_PATH.parent.mkdir(parents=True, exist_ok=True) # Ensure directories exist for db file
+
+	conn = get_conn()
+	conn.execute('PRAGMA foreign_keys = ON')
+	conn.execute("""
+		CREATE TABLE IF NOT EXISTS Apps (
+			id				INTEGER PRIMARY KEY AUTOINCREMENT,
+			name			TEXT	NOT NULL,
+			desktop_file	TEXT	NOT NULL UNIQUE
+		)
+	""")
+	conn.execute("""
+		CREATE TABLE IF NOT EXISTS DatesRun (
+			id		INTEGER PRIMARY KEY AUTOINCREMENT,
+			date	TEXT	NOT NULL,
+			app_id	INTEGER NOT NULL,
+			FOREIGN KEY (app_id) REFERENCES Apps(id),
+			UNIQUE (date, app_id)
+		)
+	""")
+	conn.execute("""
+		CREATE TABLE IF NOT EXISTS Donations (
+			id		INTEGER PRIMARY KEY AUTOINCREMENT,
+			date	TEXT	NOT NULL,
+			amount	INTEGER	NOT NULL,
+			app_id	INTEGER NOT NULL,
+			FOREIGN KEY (app_id) REFERENCES Apps(id)
+		)
+	""")
+	conn.commit()
+	return conn
+
+def process_queue():
+	"""Processes the record queue created by Fickle FOSS Tracker. Run once (on startup).
+	
+	Instead of writing directly to fickle-foss.db, Fickle FOSS Tracker writes to a queue text file.
+	One record per line. Each record has: date, app_name, and desktop_filename - separated by tabs.
+	
+	Uses `INSERT OR IGNORE INTO` so records are ignored if they exist already.
+	"""
+	conn = get_conn()
+	conn.execute('PRAGMA foreign_keys = ON')
+
+	with open(QUEUE_PATH, "r") as file:
+		Apps_queue = []
+		DatesRun_queue = []
+
+		for line in file:
+			date, app_name, desktop_file = line.rstrip('\n').split('\t')
+			Apps_queue.append((app_name, desktop_file))
+			DatesRun_queue.append((date, desktop_file))
+
+		conn.executemany("""
+			INSERT OR IGNORE INTO Apps (name, desktop_file)
+			VALUES (?, ?)
+		""", Apps_queue)
+
+		conn.executemany("""
+			INSERT OR IGNORE INTO DatesRun (date, app_id)
+			SELECT ?, id FROM Apps WHERE desktop_file = ?
+		""", DatesRun_queue)
+
+		conn.commit()
+
+		QUEUE_PATH.unlink() # delete queue file
 
 
 def get_apps_used_list(date_from, date_to):
@@ -103,11 +168,11 @@ def get_app_desktop_files():
 def create_donation(donation_date, amount, app_id):
 	"""Saves a donation"""
 	conn = get_conn()
-	donation_id = conn.execute('''
+	donation_id = conn.execute("""
 		INSERT INTO Donations (date, amount, app_id)
 		VALUES(?, ?, ?)
 		RETURNING id
-	''', (donation_date.strftime("%Y-%m-%d"), amount, app_id)).fetchone()[0]
+	""", (donation_date.strftime("%Y-%m-%d"), amount, app_id)).fetchone()[0]
 	conn.commit()
 	conn.close()
 	return donation_id
@@ -115,20 +180,20 @@ def create_donation(donation_date, amount, app_id):
 def update_donation(donation_date, amount, donation_id):
 	"""Saves a donation"""
 	conn = get_conn()
-	conn.execute('''
+	conn.execute("""
 		UPDATE Donations
 		SET
 			date=?,
 			amount=?
 		WHERE id=?
-	''', (donation_date.strftime("%Y-%m-%d"), amount, donation_id))
+	""", (donation_date.strftime("%Y-%m-%d"), amount, donation_id))
 	conn.commit()
 	conn.close()
 
 def delete_donation(donation_id):
 	"""Deletes a donation"""
 	conn = get_conn()
-	conn.execute('''	DELETE FROM Donations WHERE id=?''', (donation_id,))
+	conn.execute("""DELETE FROM Donations WHERE id=?""", (donation_id,))
 	conn.commit()
 	conn.close()
 

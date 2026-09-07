@@ -1,10 +1,11 @@
 import locale, os
+from pathlib import Path
 from decimal import Decimal
 from datetime import date, timedelta
 from calendar import monthrange
 from gi.repository import Gio, GioUnix, Gtk
 
-from . import dbus
+ICONS_PATH = Path.home() / ".local" / "share" / "fickle-foss" / "app-icons-cache"
 
 
 def get_period_name(date_, donation_freq):
@@ -84,19 +85,19 @@ def get_de_name():
 	name = os.environ.get("XDG_CURRENT_DESKTOP", "") or None
 	return name
 
-
 def get_app_icon_image(desktop_file, size):
 	"""Returns a Gtk.Image. Size can be 64 or 96.
 	
 	Resolves the icon in one of three ways (in order):
-	1. From the file system.
-	2. From an icon byte array cache received over DBus on startup
+	1. From GioUnix DesktopAppInfo get_icon.
+	2. From a copy of icon files created by the Fickle FOSS Tracker extension and moved to a location that Fickle FOSS can access as a Flatpak. 
 	3. The icon for 'application-x-executable' as a last resort
 
-	Also returns the desktop environment (DE) icon if it knows which icon to use (currently only works for GNOME)
+	Also returns the desktop environment (DE) icon if it knows which icon to use (currently only works for GNOME).
 	"""
 	icon_image = None
 
+	# Desktop Environment icons
 	if desktop_file == 'DE':
 		name = get_de_name()
 		if name == "GNOME":
@@ -106,28 +107,32 @@ def get_app_icon_image(desktop_file, size):
 			icon = Gio.ThemedIcon.new("item-missing-symbolic")
 		icon_image = Gtk.Image.new_from_gicon(icon)
 
-	# Start with a file system check
-	try:
-		app_info = GioUnix.DesktopAppInfo.new(desktop_file)
-	except TypeError:
-		# The above fails in a TypeError if it doesn't find a match
-		app_info = None
-
-	if app_info:
-		icon = app_info.get_icon()
-		if icon:
-			icon_image = Gtk.Image.new_from_gicon(icon)
+	# App icons
 	else:
-		# If file system check didn't work, try app_icons texture store (returned by Fickle FOSS Tracker via Dbus)
+		# Start with the AppInfo method
 		try:
-			icon_texture = dbus.app_icons[desktop_file][size]
-			icon_image = Gtk.Image.new_from_paintable(icon_texture)
-		except KeyError:
-			pass
+			app_info = GioUnix.DesktopAppInfo.new(desktop_file)
+		except TypeError:
+			# The above fails in a TypeError if it doesn't find a match
+			app_info = None
 
-	# Use a Fall back icon if still no app icon found
-	if not icon_image:
-		icon_image = Gtk.Image.new_from_gicon(Gio.ThemedIcon.new('application-x-executable'))
+		if app_info:
+			icon = app_info.get_icon()
+			if icon:
+				icon_image = Gtk.Image.new_from_gicon(icon)
+
+		# If AppInfo couldn't find it (probably because Fickle FOSS is being run as a Flatpak), use icon files created by Fickle FOSS Tracker
+		# filename format is either:
+		#	{desktop_file}.svg, or
+		#	{desktop_file}.{64|96}
+		if not icon_image:
+			icon_image = Gtk.Image.new_from_file(str(ICONS_PATH / f'{desktop_file}.svg'))
+		if not icon_image:
+			icon_image = Gtk.Image.new_from_file(str(ICONS_PATH / f'{desktop_file}.{size}'))
+
+		# Use a fallback icon if no icon found in cache
+		if not icon_image:
+			icon_image = Gtk.Image.new_from_gicon(Gio.ThemedIcon.new('application-x-executable'))
 
 	icon_image.set_pixel_size(size)
 	return icon_image

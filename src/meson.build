@@ -32,7 +32,6 @@ fickle_foss_sources = [
   'db.py',
   'helpers.py',
   'state.py',
-  'dbus.py',
 
   'window.py',
   'preferences_dialog.py',
