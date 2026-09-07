@@ -60,28 +60,29 @@ def process_queue():
 	conn = get_conn()
 	conn.execute('PRAGMA foreign_keys = ON')
 
-	with open(QUEUE_PATH, "r") as file:
-		Apps_queue = []
-		DatesRun_queue = []
+	if QUEUE_PATH.exists():
+		with open(QUEUE_PATH, "r") as file:
+			Apps_queue = []
+			DatesRun_queue = []
 
-		for line in file:
-			date, app_name, desktop_file = line.rstrip('\n').split('\t')
-			Apps_queue.append((app_name, desktop_file))
-			DatesRun_queue.append((date, desktop_file))
+			for line in file:
+				date, app_name, desktop_file = line.rstrip('\n').split('\t')
+				Apps_queue.append((app_name, desktop_file))
+				DatesRun_queue.append((date, desktop_file))
 
-		conn.executemany("""
-			INSERT OR IGNORE INTO Apps (name, desktop_file)
-			VALUES (?, ?)
-		""", Apps_queue)
+			conn.executemany("""
+				INSERT OR IGNORE INTO Apps (name, desktop_file)
+				VALUES (?, ?)
+			""", Apps_queue)
 
-		conn.executemany("""
-			INSERT OR IGNORE INTO DatesRun (date, app_id)
-			SELECT ?, id FROM Apps WHERE desktop_file = ?
-		""", DatesRun_queue)
+			conn.executemany("""
+				INSERT OR IGNORE INTO DatesRun (date, app_id)
+				SELECT ?, id FROM Apps WHERE desktop_file = ?
+			""", DatesRun_queue)
 
-		conn.commit()
+			conn.commit()
 
-		QUEUE_PATH.unlink() # delete queue file
+			QUEUE_PATH.unlink() # delete queue file
 
 
 def get_apps_used_list(date_from, date_to):
