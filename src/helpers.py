@@ -126,9 +126,15 @@ def get_app_icon_image(desktop_file, size):
 		#	{desktop_file}.svg, or
 		#	{desktop_file}.{64|96}
 		if not icon_image:
-			icon_image = Gtk.Image.new_from_file(str(ICONS_PATH / f'{desktop_file}.svg'))
-		if not icon_image:
-			icon_image = Gtk.Image.new_from_file(str(ICONS_PATH / f'{desktop_file}.{size}'))
+			# Use SVG if exists
+			image_file = ICONS_PATH / f'{desktop_file}.svg'
+			if image_file.exists():
+				icon_image = Gtk.Image.new_from_file(str(image_file))
+			else:
+				# Else use raster image if exists
+				image_file = ICONS_PATH / f'{desktop_file}.{size}'
+				if image_file.exists():
+					icon_image = Gtk.Image.new_from_file(str(image_file))
 
 		# Use a fallback icon if no icon found in cache
 		if not icon_image:
