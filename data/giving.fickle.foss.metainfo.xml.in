@@ -4,34 +4,34 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
 
-  <name>Fickle-foss</name>
-  <summary>Keep the summary shorter, between 10 and 35 characters</summary>
+  <name>Fickle FOSS</name>
+  <summary>Track your donations to FOSS</summary>
   <description>
-    <p>No description</p>
+    <p>Fickle FOSS is an app for fickle givers. Each month, view a list of apps ranked by frequency of use, and choose one (or more!) to donate to. Next month, you choose again.</p>
   </description>
 
-  <developer id="tld.vendor">
-    <name>Ben Michie</name>
+  <developer id="giving.fickle.foss">
+    <name>Ben Michie (benopotamus)</name>
   </developer>
 
   <!-- Required: Should be a link to the upstream homepage for the component -->
-  <url type="homepage">https://example.org/</url>
+  <url type="homepage">https://foss.fickle.giving/</url>
   <!-- Recommended: It is highly recommended for open-source projects to display the source code repository -->
-  <url type="vcs-browser">https://example.org/repository</url>
+  <url type="vcs-browser">https://github.com/benopotamus/fickle-foss</url>
   <!-- Should point to the software's bug tracking system, for users to report new bugs -->
-  <url type="bugtracker">https://example.org/issues</url>
+  <url type="bugtracker">https://github.com/benopotamus/fickle-foss/issues</url>
   <!-- Should link a FAQ page for this software, to answer some of the most-asked questions in detail -->
   <!-- URLs of this type should point to a webpage where users can submit or modify translations of the upstream project -->
-  <url type="translate">https://example.org/translate</url>
-  <url type="faq">https://example.org/faq</url>
+  <!-- <url type="translate">https://example.org/translate</url> -->
+  <!-- <url type="faq">https://example.org/faq</url> -->
   <!-- Should provide a web link to an online user's reference, a software manual or help page -->
-  <url type="help">https://example.org/help</url>
+  <!-- <url type="help">https://example.org/help</url> -->
   <!-- URLs of this type should point to a webpage showing information on how to donate to the described software project -->
-  <url type="donation">https://example.org/donate</url>
+  <!-- <url type="donation">https://example.org/donate</url> -->
   <!-- This could for example be an HTTPS URL to an online form or a page describing how to contact the developer -->
-  <url type="contact">https://example.org/contact</url>
+  <url type="contact">https://github.com/benopotamus/fickle-foss/discussions</url>
   <!-- URLs of this type should point to a webpage showing information on how to contribute to the described software project -->
-  <url type="contribute">https://example.org/contribute</url>
+  <!-- <url type="contribute">https://example.org/contribute</url> -->
 
   <translation type="gettext">fickle-foss</translation>
   <!-- All graphical applications having a desktop file must have this tag in the MetaInfo.
@@ -42,29 +42,32 @@
 
   <!-- Applications should set a brand color in both light and dark variants like so -->
   <branding>
-    <color type="primary" scheme_preference="light">#ff00ff</color>
-    <color type="primary" scheme_preference="dark">#993d3d</color>
+    <color type="primary" scheme_preference="light">#f7ccca</color>
+    <color type="primary" scheme_preference="dark">#a51d2d</color>
   </branding>
 
   <screenshots>
     <screenshot type="default">
-      <image>https://example.org/example1.png</image>
-      <caption>A caption</caption>
+      <image>https://raw.githubusercontent.com/benopotamus/fickle-foss/main/data/screenshots/Donate.png</image>
+      <caption>Choose an app to donate to</caption>
     </screenshot>
     <screenshot>
-      <image>https://example.org/example2.png</image>
-      <caption>A caption</caption>
+      <image>https://raw.githubusercontent.com/benopotamus/fickle-foss/main/data/screenshots/Donate%20-%20dialog%20box.png</image>
+      <caption>Record donation</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/benopotamus/fickle-foss/main/data/screenshots/MY%20Donations.png</image>
+      <caption>View list of donations ❤️</caption>
     </screenshot>
   </screenshots>
 
   <releases>
-    <release version="1.0.1" date="2024-01-18">
-      <url type="details">https://example.org/changelog.html#version_1.0.1</url>
+    <release version="0.14" date="2026-09-08">
+      <!-- <url type="details">https://example.org/changelog.html#version_1.0.1</url> -->
       <description translate="no">
         <p>Release description</p>
         <ul>
-          <li>List of changes</li>
-          <li>List of changes</li>
+          <li>Initial version</li>
         </ul>
       </description>
     </release>
