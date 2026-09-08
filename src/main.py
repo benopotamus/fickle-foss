@@ -37,10 +37,12 @@ from . import db
 class FickleFossApplication(Adw.Application):
 	"""The main application singleton class."""
 
-	def __init__(self):
+	def __init__(self, version):
 		super().__init__(application_id='giving.fickle.foss',
 						 flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
 						 resource_base_path='/giving/fickle/foss')
+		self.version = version
+		
 		self.create_action('quit', lambda *_: self.quit(), ['<control>q'])
 		self.create_action('about', self.on_about_action)
 		self.create_action('preferences', self.on_preferences_action)
@@ -83,10 +85,10 @@ class FickleFossApplication(Adw.Application):
 		"""Callback for the app.about action."""
 		about = Adw.AboutDialog(application_name='Fickle FOSS',
 								application_icon='giving.fickle.foss',
-								developer_name='ben',
-								version='0.1.0',
-								translator_credits = _('benopotamus'),
-								developers=['ben'],
+								developer_name='Ben Michie (benopotamus)',
+								version=self.version,
+								# translator_credits = _('benopotamus'),
+								developers=['Ben Michie (benopotamus)'],
 								copyright='© 2026 Ben Michie')
 		about.present(self.props.active_window)
 
@@ -113,5 +115,5 @@ class FickleFossApplication(Adw.Application):
 
 def main(version):
 	"""The application's entry point."""
-	app = FickleFossApplication()
+	app = FickleFossApplication(version)
 	return app.run(sys.argv)

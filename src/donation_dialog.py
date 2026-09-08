@@ -19,8 +19,6 @@
 
 import locale
 from datetime import date, datetime
-from decimal import Decimal
-
 from gi.repository import Gtk, Gio, Adw
 
 from . import db
@@ -74,7 +72,7 @@ class DonationDialog(Adw.Dialog):
 
 		self.original_amount = 0
 		if donation_amount:
-			self.amount_field.set_text(str(helpers.to_money(donation_amount, symbol=False)))
+			self.amount_field.set_text(str(helpers.to_money(donation_amount, symbol=False, grouping=False)))
 			self.original_amount = donation_amount # We keep the original donation amount so the new amount can be compared to the original amount to work out what the budget-remaining value should be.
 
 		# Set default value of date field using locale formatting
@@ -131,7 +129,7 @@ class DonationDialog(Adw.Dialog):
 			self.date_field.add_css_class("error")
 
 		if self.amount_field.get_text() and self.date_field.get_text():
-			amount_cents = helpers.to_int(Decimal(self.amount_field.get_text()))
+			amount_cents = helpers.to_int(self.amount_field.get_text())
 			if amount_cents is None or donation_date is None:
 				return
 

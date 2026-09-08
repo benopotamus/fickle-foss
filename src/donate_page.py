@@ -63,23 +63,25 @@ class DonatePage(Gtk.Box):
 		# The user's desktop environment has a permanent place on the donate page
 		# e.g. "GNOME", "KDE", "XFCE"
 		de_name = helpers.get_de_name()
-		de_app_id, de_amount_donated_this_year = db.get_or_create_app_id_for_de(de_name)
-		de_row = Adw.ActionRow(title=de_name)
-		de_row.app_id = de_app_id
-		de_row.desktop_file = 'DE'
+		# Only create the row if the DE can be identified
+		if de_name:
+			de_app_id, de_amount_donated_this_year = db.get_or_create_app_id_for_de(de_name)
+			de_row = Adw.ActionRow(title=de_name)
+			de_row.app_id = de_app_id
+			de_row.desktop_file = 'DE'
 
-		self.populate_row(
-			de_row, 
-			helpers.get_app_icon_image('DE', 64), # this will lookup the correct icon for the DE where possible
-			de_amount_donated_this_year
-		)
+			self.populate_row(
+				de_row, 
+				helpers.get_app_icon_image('DE', 64), # this will lookup the correct icon for the DE where possible
+				de_amount_donated_this_year
+			)
 
-		de_row.set_activatable(True)
-		self.de_box.append(de_row)
-		self.de_box.connect("row-activated", self.on_row_clicked)
+			de_row.set_activatable(True)
+			self.de_box.append(de_row)
+			self.de_box.connect("row-activated", self.on_row_clicked)
 
-		# Open donation dialog box when an app row (or the DE row) is clicked
-		self.apps_listbox.connect("row-activated", self.on_row_clicked)
+			# Open donation dialog box when an app row (or the DE row) is clicked
+			self.apps_listbox.connect("row-activated", self.on_row_clicked)
 
 	def bind_amount_donated(self, state, label, box):
 		"""Binds an AppYearDonationState's amount_donated_this_year to a label's text

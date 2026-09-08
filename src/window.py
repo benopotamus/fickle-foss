@@ -61,12 +61,3 @@ class FickleFossWindow(Adw.ApplicationWindow):
 		else:
 			self.budget_label.remove_css_class("warning")
 			return f"{helpers.to_money(amount)} remaining in budget"
-
-
-
-	def on_page_changed(self, stack, _):
-		visible_child_name = stack.get_visible_child_name()
-		if visible_child_name == 'donations':
-			self.donations_page.populate_donations()
-		elif visible_child_name == 'donate':
-			self.donate_page.populate_apps_used_list()

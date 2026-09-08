@@ -1,6 +1,6 @@
 import locale, os
 from pathlib import Path
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import date, timedelta
 from calendar import monthrange
 from gi.repository import Gio, GioUnix, Gtk
@@ -67,18 +67,19 @@ def to_int(amount):
 	"""Converts a decimal value (Decimal or String) to an int representing cents (value*100)"""
 	if isinstance(amount, str):
 		try:
-			amount = Decimal(amount.strip())
-		except ValueError:
+			amount = Decimal(locale.delocalize(amount.strip()))
+		except (InvalidOperation, ValueError):
 			return None
 	return int(amount * 100)
 
-def to_money(amount, symbol=True):
+def to_money(amount, symbol=True, grouping=True):
 	"""Returns amount as a locale formatted money string - with monetary symbol.
 	Set `symbol` to False not include monetary symbol.
+	Set `grouping` to False to not include thousands separators. (this is needed when populating input fields)
 	"""
 	# TODO handle locales where the currency symbol is at the end. Maybe use Babel?
 	decimal_char = locale.localeconv()["mon_decimal_point"]
-	return locale.currency(amount/100, grouping=True, symbol=symbol).rstrip('0').rstrip(decimal_char) # The rstrips here aim to return whole numbers where possible
+	return locale.currency(amount/100, grouping=grouping, symbol=symbol).rstrip('0').rstrip(decimal_char) # The rstrips here aim to return whole numbers where possible
 
 def get_de_name():
 	"""Returns the desktop environment name"""

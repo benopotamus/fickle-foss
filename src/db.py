@@ -13,6 +13,7 @@ QUEUE_PATH = Path.home() / ".local" / "share" / "fickle-foss" / "dbqueue"
 def get_conn():
 	"""Returns a connection to fickle-foss.db"""
 	conn = sqlite3.connect(DB_PATH)
+	conn.execute('PRAGMA foreign_keys = ON')
 	return conn
 
 def init_db():
@@ -20,7 +21,6 @@ def init_db():
 	DB_PATH.parent.mkdir(parents=True, exist_ok=True) # Ensure directories exist for db file
 
 	conn = get_conn()
-	conn.execute('PRAGMA foreign_keys = ON')
 	conn.execute("""
 		CREATE TABLE IF NOT EXISTS Apps (
 			id				INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,7 +58,6 @@ def process_queue():
 	Uses `INSERT OR IGNORE INTO` so records are ignored if they exist already.
 	"""
 	conn = get_conn()
-	conn.execute('PRAGMA foreign_keys = ON')
 
 	if QUEUE_PATH.exists():
 		with open(QUEUE_PATH, "r") as file:
@@ -81,7 +80,7 @@ def process_queue():
 			""", DatesRun_queue)
 
 			conn.commit()
-
+			conn.close()
 			QUEUE_PATH.unlink() # delete queue file
 
 

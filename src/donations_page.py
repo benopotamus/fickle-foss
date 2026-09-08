@@ -26,11 +26,11 @@ from . import helpers
 from .donation_dialog import DonationDialog
 
 
-class DonationItem(GObject.Object):
+class Donation(GObject.Object):
 	"""Represents one donation row on the Donations page.
 	Only `amount` needs to be a GObject property (to make it reactive).
 	"""
-	__gtype_name__ = 'DonationItem'
+	__gtype_name__ = 'Donation'
 
 	amount = GObject.Property(type=int, default=0)
 
@@ -43,11 +43,11 @@ class DonationItem(GObject.Object):
 		self.desktop_file = desktop_file # app's desktop file name
 
 
-def _compare_by_date_desc(item_a, item_b):
+def _compare_by_date_desc(donation_a, donation_b):
 	"""Sort newest-first within a group, matching db.get_donations_groups' ORDER BY."""
-	if item_a.date == item_b.date:
+	if donation_a.date == donation_b.date:
 		return 0
-	return -1 if item_a.date > item_b.date else 1
+	return -1 if donation_a.date > donation_b.date else 1
 
 
 @Gtk.Template(resource_path='/giving/fickle/foss/donation-group.ui')
@@ -61,36 +61,36 @@ class DonationGroup(Gtk.Box):
 		super().__init__()
 		self.heading.set_label(group_name)
 
-		self.store = Gio.ListStore.new(DonationItem)
+		self.store = Gio.ListStore.new(Donation)
 		self.listbox.bind_model(self.store, self._create_row)
 		self.listbox.connect("row-activated", self.on_listbox_row_clicked)
 
-	def add_item(self, item):
-		self.store.insert_sorted(item, _compare_by_date_desc)
+	def add_donation(self, donation):
+		self.store.insert_sorted(donation, _compare_by_date_desc)
 
-	def remove_item(self, item):
-		found, index = self.store.find(item)
+	def remove_donation(self, donation):
+		found, index = self.store.find(donation)
 		if found:
 			self.store.remove(index)
 
-	def _create_row(self, item):
-		"""Builds the row widget for one DonationItem. Called automatically by
-		self.listbox.bind_model whenever an item is inserted into self.store."""
-		row = Adw.ActionRow(title=item.app_name)
-		# Stashed on the row so on_listbox_row_clicked can get back to the item that
-		# produced it (and DonationsPage can find the right item/group to update later).
-		row.donation_item = item
+	def _create_row(self, donation):
+		"""Builds the row widget for one Donation. Called automatically by
+		self.listbox.bind_model whenever an donation is inserted into self.store."""
+		row = Adw.ActionRow(title=donation.app_name)
+		# Stashed on the row so on_listbox_row_clicked can get back to the donation that
+		# produced it (and DonationsPage can find the right donation/group to update later).
+		row.donation = donation
 
 		amount_label = Gtk.Label()
 		amount_label.add_css_class('donation-amount')
-		item.bind_property(
+		donation.bind_property(
 			"amount", amount_label, "label",
 			GObject.BindingFlags.SYNC_CREATE,
 			transform_to=lambda _, amount: helpers.to_money(amount)
 		)
 		row.add_suffix(amount_label)
 
-		icon_image = helpers.get_app_icon_image(item.desktop_file, 64)
+		icon_image = helpers.get_app_icon_image(donation.desktop_file, 64)
 		icon_image.add_css_class('icon-dropshadow')
 		icon_image.set_margin_end(6)
 		icon_image.set_margin_top(12)
@@ -102,14 +102,14 @@ class DonationGroup(Gtk.Box):
 
 	# SIGNAL
 	def on_listbox_row_clicked(self, listbox:Gtk.ListBox, row:Gtk.ListBoxRow):
-		item = row.donation_item
+		donation = row.donation
 		dialog = DonationDialog(
-			app_id = item.app_id,
-			donation_id = item.id,
-			desktop_file = item.desktop_file,
-			app_name = item.app_name,
-			donation_date = item.date,
-			donation_amount = item.amount,
+			app_id = donation.app_id,
+			donation_id = donation.id,
+			desktop_file = donation.desktop_file,
+			app_name = donation.app_name,
+			donation_date = donation.date,
+			donation_amount = donation.amount,
 		)
 		dialog.present(self)
 
@@ -125,10 +125,8 @@ class DonationsPage(Gtk.Stack):
 		self.settings = Gio.Settings(schema_id="giving.fickle.foss")
 		self.donation_freq = self.settings.get_string("donation-frequency") # e.g. "monthly"
 
-		self.period_groups = {}   # period key (e.g. "July 2026") -> DonationGroup
-		self.items_by_id = {}     # donation id -> (DonationItem, DonationGroup) - lets
-		                          # handle_donation_updated/deleted find a donation's
-		                          # current row without searching every group.
+		self.period_groups = {} # period key (e.g. "July 2026") -> DonationGroup
+		self.donations_by_id = {} # donation id -> (Donation, DonationGroup) - lets `handle_donation_updated` and `handle_donation_deleted`` find a donation's current row without searching every group.
 
 		self.populate_donations()
 
@@ -145,7 +143,7 @@ class DonationsPage(Gtk.Stack):
 		while child := self.donation_groups_box.get_first_child():
 			self.donation_groups_box.remove(child)
 		self.period_groups = {}
-		self.items_by_id = {}
+		self.donations_by_id = {}
 
 		donation_groups = db.get_donations_groups(self.donation_freq)
 
@@ -158,7 +156,7 @@ class DonationsPage(Gtk.Stack):
 			donation_group = DonationGroup(group_name)
 
 			for donation in group_rows:
-				item = DonationItem(
+				donation = Donation(
 					donation_id = donation['id'], # row.id in db
 					app_id = donation['app_id'], # row.id in db
 					app_name = donation['name'],
@@ -166,8 +164,8 @@ class DonationsPage(Gtk.Stack):
 					amount = donation['amount'],
 					desktop_file = donation['desktop_file'] # app's desktop file name
 				)
-				donation_group.add_item(item)
-				self.items_by_id[item.id] = (item, donation_group)
+				donation_group.add_donation(donation)
+				self.donations_by_id[donation.id] = (donation, donation_group)
 
 			self.period_groups[group_name] = donation_group
 			self.donation_groups_box.append(donation_group)
@@ -193,7 +191,7 @@ class DonationsPage(Gtk.Stack):
 			self.populate_donations()
 			return
 
-		item = DonationItem(
+		donation = Donation(
 			donation_id = donation_id,
 			app_id = app_id,
 			app_name = app_name,
@@ -201,24 +199,24 @@ class DonationsPage(Gtk.Stack):
 			amount = amount,
 			desktop_file = desktop_file
 		)
-		# add_item uses insert_sorted, so the row lands in the right place within the
+		# add_donation uses insert_sorted, so the row lands in the right place within the
 		# group and bind_model builds the widget - nothing to touch directly here.
-		group.add_item(item)
-		self.items_by_id[item.id] = (item, group)
+		group.add_donation(donation)
+		self.donations_by_id[donation.id] = (donation, group)
 
 	def handle_donation_updated(self, donation_id, new_date, new_amount):
 		"""Updates a donation row.
 		Does an in-place update unless it would result in a new group being created or an existing group being deleted (because the donation changed date and it was the only one in the existing group). For these complex situations, falls back to populate_donations().
 		"""
-		item, group = self.items_by_id.get(donation_id)
+		donation, group = self.donations_by_id.get(donation_id)
 		new_key = helpers.get_period_name(date.fromisoformat(new_date), self.donation_freq)
-		old_key = helpers.get_period_name(date.fromisoformat(item.date), self.donation_freq)
+		old_key = helpers.get_period_name(date.fromisoformat(donation.date), self.donation_freq)
 
 		if new_key == old_key:
 			# Same period group - no rows move, just update the values in place.
-			# item.amount is bound to the row's label, so this alone updates the UI.
-			item.date = new_date
-			item.amount = new_amount
+			# donation.amount is bound to the row's label, so this alone updates the UI.
+			donation.date = new_date
+			donation.amount = new_amount
 			return
 
 		target_group = self.period_groups.get(new_key)
@@ -228,31 +226,27 @@ class DonationsPage(Gtk.Stack):
 			self.populate_donations()
 			return
 
-		# Move: remove from the old group's store, update the item, insert into the
+		# Move: remove from the old group's store, update the donation, insert into the
 		# new group's store in the right sorted position. Both listboxes update
 		# themselves via bind_model - no row widgets are touched directly here.
-		group.remove_item(item)
-		item.date = new_date
-		item.amount = new_amount
-		target_group.add_item(item)
-		self.items_by_id[donation_id] = (item, target_group)
+		group.remove_donation(donation)
+		donation.date = new_date
+		donation.amount = new_amount
+		target_group.add_donation(donation)
+		self.donations_by_id[donation_id] = (donation, target_group)
 
 	def handle_donation_deleted(self, donation_id):
 		"""Deletes a new donation row.
 		Does an in-place update unless it would result in a group being deleted (because the donation changed date and it was the only one in the existing group). For these complex situations, falls back to populate_donations().
 		"""
-		entry = self.items_by_id.get(donation_id)
-		if entry is None:
-			self.populate_donations()
-			return
-		item, group = entry
+		donation, group = self.donations_by_id.get(donation_id)
 
 		if group.store.get_n_items() == 1:
 			self.populate_donations()
 			return
 
-		group.remove_item(item)
-		del self.items_by_id[donation_id]
+		group.remove_donation(donation)
+		del self.donations_by_id[donation_id]
 
 	def on_frequency_changed(self, settings, key):
 		self.donation_freq = settings.get_string(key)
