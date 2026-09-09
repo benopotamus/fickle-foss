@@ -42,7 +42,7 @@
 
   <!-- Applications should set a brand color in both light and dark variants like so -->
   <branding>
-    <color type="primary" scheme_preference="light">#f7ccca</color>
+    <color type="primary" scheme_preference="light">#ffa9a6</color>
     <color type="primary" scheme_preference="dark">#a51d2d</color>
   </branding>
 

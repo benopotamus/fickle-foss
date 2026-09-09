@@ -2,9 +2,7 @@
 
 A Gnome app for fickle giving (<https://fickle.giving>).
 
-**Fickle giving** is the idea of rather than committing to monthly donations to a specific project(s), you commit to monthly donations to whatever project(s) you like each month. Fickle FOSS helps you choose by showing you which apps you use most often and giving you a place to record which projects you have donated to. 
-
-It can be hard to remember which apps you used each month, and which ones you've donated to in the past. Fickle FOSS will remember for you.
+**Fickle giving** is the idea of rather than committing to monthly donations to a specific project(s), you commit to monthly donations to whatever project(s) you feel like each month 💕. Fickle FOSS helps you choose by showing you which apps you use most often, and it helps you remember your generosity by giving you a place to record your donations.
 
 **Happy giving!**
 
@@ -12,9 +10,9 @@ It can be hard to remember which apps you used each month, and which ones you've
 
 ## Dependencies
 
-This program (Fickle FOSS) is a GUI for viewing app usage and recording donations. It assumes you have also installed [fickle-foss-tracker](https://github.com/benopotamus/fickle-foss-tracker) which is the companion program that records app usage. 
+This program (Fickle FOSS) is a GUI for viewing app usage and recording donations. It assumes you have also installed the [fickle-foss-tracker-gnome-extension](https://github.com/benopotamus/fickle-foss-tracker-gnome-extension) which keeps track of which days you use which apps.
 
-You will also need the Gnome development tools `meson` and `ninja` installed to compile and install Fickle FOSS.
+To compile and install the source code, you will need the Gnome development tools `meson` and `ninja`.
 
 ---
 
@@ -69,5 +67,3 @@ rm ~/.local/share/icons/hicolor/scalable/apps/giving.fickle.foss.svg
 rm ~/.local/share/icons/hicolor/symbolic/apps/giving.fickle.foss-symbolic.svg
 glib-compile-schemas ~/.local/share/glib-2.0/schemas
 ```
-
-This does not remove `fickle-foss-tracker` or its database. You can uninstall those separately.

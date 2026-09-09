@@ -7,9 +7,6 @@ project('fickle-foss',
 i18n = import('i18n')
 gnome = import('gnome')
 
-
-
-
 subdir('data')
 subdir('src')
 subdir('po')
@@ -19,7 +16,6 @@ gnome.post_install(
   # gtk_update_icon_cache: true, # Commented out to resolve an error
   update_desktop_database: true,
 )
-
 
 # Ask the running session bus to reload its config so it picks up the new
 # giving.fickle.foss.service file immediately, without requiring a logout.
