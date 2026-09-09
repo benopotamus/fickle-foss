@@ -48,21 +48,21 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/benopotamus/fickle-foss/main/data/screenshots/Donate.png</image>
+      <image>https://raw.githubusercontent.com/benopotamus/fickle-foss/v0.1.4/data/screenshots/Donate.png</image>
       <caption>Choose an app to donate to</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/benopotamus/fickle-foss/main/data/screenshots/Donate%20-%20dialog%20box.png</image>
+      <image>https://raw.githubusercontent.com/benopotamus/fickle-foss/v0.1.4/data/screenshots/Donate%20-%20dialog%20box.png</image>
       <caption>Record donation</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/benopotamus/fickle-foss/main/data/screenshots/MY%20Donations.png</image>
+      <image>https://raw.githubusercontent.com/benopotamus/fickle-foss/v0.1.4/data/screenshots/My%20Donations.png</image>
       <caption>View list of donations ❤️</caption>
     </screenshot>
   </screenshots>
 
   <releases>
-    <release version="0.14" date="2026-09-08">
+    <release version="0.1.5" date="2026-09-09">
       <!-- <url type="details">https://example.org/changelog.html#version_1.0.1</url> -->
       <description translate="no">
         <p>Release description</p>
