@@ -19,9 +19,7 @@ command: fickle-foss
 separate-locales: false
 
 finish-args:
-  # Networking, to open donation / project links from the app. (This will come in a later version)
-  # - --share=network
-  # - --share=ipc
+  - --share=ipc
   # Display: prefer Wayland, fall back to X11, enable GPU.
   - --socket=wayland
   - --socket=fallback-x11
