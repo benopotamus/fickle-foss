@@ -1,0 +1,7 @@
+repo/
+
+# These dirs seem to be self ignoring. Builder adds a .gitignore into each?
+_fickle_foss_build/
+builddir/
+.flatpak-builder/
+*.flatpak
