@@ -41,4 +41,4 @@ modules:
       - type: git
         url: https://github.com/benopotamus/fickle-foss.git
         tag: v0.1.4
-        commit: 7eac31f06ff5f36ce772df5065ab1b0aea8c9bd0
+        commit: 000c634e591d06fda15f3faf801e4b48ade3eef6
