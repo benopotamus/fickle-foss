@@ -1,6 +1,6 @@
 # Fickle FOSS
 
-A Gnome app for fickle giving (<https://fickle.giving>).
+An app for fickle giving (<https://fickle.giving>).
 
 **Fickle giving** is the idea of rather than committing to monthly donations to a specific project(s), you commit to monthly donations to whatever project(s) you feel like each month 💕. Fickle FOSS helps you choose by showing you which apps you use most often, and it helps you remember your generosity by giving you a place to record your donations.
 
@@ -10,7 +10,12 @@ A Gnome app for fickle giving (<https://fickle.giving>).
 
 ## Dependencies
 
-This program (Fickle FOSS) is a GUI for viewing app usage and recording donations. It assumes you have also installed the [fickle-foss-tracker-gnome-extension](https://github.com/benopotamus/fickle-foss-tracker-gnome-extension) which keeps track of which days you use which apps.
+This program (Fickle FOSS) is a GUI for viewing app usage and recording donations. You also need a separate program to record which apps are used each day. 
+
+**Gnome** users can install the [Fickle FOSS Tracker Gnome extension](https://github.com/benopotamus/fickle-foss-tracker-gnome-extension).
+Other users can install the systemd [Fickle FOSS Tracker program](https://github.com/benopotamus/fickle-foss-tracker).
+
+### Compiling from source
 
 To compile and install the source code, you will need the Gnome development tools `meson` and `ninja`.
 
