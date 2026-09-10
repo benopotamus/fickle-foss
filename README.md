@@ -1,6 +1,6 @@
 # Fickle FOSS
 
-An app for fickle giving (<https://fickle.giving>).
+An app for fickle giving (<https://fickle.giving>) to FOSS.
 
 **Fickle giving** is the idea of, rather than committing to monthly donations to a specific project(s), you commit to monthly donations to whatever project(s) you feel like each month 💕. Fickle FOSS helps you choose by showing you which apps you use most often, and it helps you remember your generosity by giving you a place to record your donations.
 
